@@ -275,7 +275,10 @@
         <div id="task-screen" class="hidden">
             <div class="progress" id="progress-text">Вопрос 1 из 10</div>
             <div class="problem" id="problem-display">25 + 14</div>
-<input type="text" id="answer-input" autocomplete="off" inputmode="numeric" pattern="-?[0-9]{1,5}" placeholder="0" oninput="this.value = this.value.replace(/[^0-9\-]/g, '').replace(/(?!^)\-/g, '').slice(0, 5)">        </div>
+            <!-- FIXED: inputmode="numeric" for mobile keyboard, min="0" to prevent negatives -->
+            <input type="number" id="answer-input" autocomplete="off" inputmode="numeric" min="0" max="999">
+            <button class="btn" id="submit-btn" onclick="submitAnswer()">Далее</button>
+        </div>
 
         <!-- Survey Screen -->
         <div id="survey-screen" class="hidden">
@@ -333,6 +336,11 @@
         </div>
     </div>
 
+    <!-- ✅ FLOATING NEXT BUTTON FOR MOBILE -->
+    <button id="floating-next" class="btn hidden" style="position: fixed; bottom: 20px; right: 20px; width: auto; min-width: 120px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        Далее →
+    </button>
+
     <script>
         // --- Configuration ---
         const QUESTIONS_PER_BLOCK = 10;
@@ -366,7 +374,6 @@
             'C': { title: 'Этап 3: Восстановление', desc: 'Решите 10 примеров в спокойной обстановке. Помех больше не будет.' }
         };
 
-        // FIXED: Removed leading zeros (0900 is invalid octal!)
         // Ultra-fast intervals for maximum cognitive load
         const BLOCK_B_DISTRIBUTION = [
             { count: 5, minInterval: 100, maxInterval: 1000 },
@@ -420,36 +427,40 @@
             transitionTitle: document.getElementById('transition-title'),
             transitionDesc: document.getElementById('transition-description')
         };
+        const floatingBtn = document.getElementById('floating-next');
 
         // --- Utils ---
         function showScreen(screenName) {
             Object.values(screens).forEach(el => el.classList.add('hidden'));
             screens[screenName].classList.remove('hidden');
+            // Hide floating button when changing screens
+            if (screenName !== 'task') {
+                floatingBtn.classList.add('hidden');
+            }
         }
 
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-function generateProblem() {
-    const ops = ['+', '-'];
-    const op = ops[getRandomInt(0, 1)];
-    let a, b, ans;
-    
-    if (op === '+') {
-        // Сложение: просто два двузначных числа
-        a = getRandomInt(10, 99);
-        b = getRandomInt(10, 99);
-        ans = a + b;
-    } else {
-        // Вычитание: гарантируем, что результат неотрицательный
-        a = getRandomInt(10, 99);
-        b = getRandomInt(10, a); // b не больше a → результат всегда >= 0
-        ans = a - b;
-    }
-    
-    return { text: `${a} ${op} ${b}`, answer: ans };
-}
+        // ✅ FIXED: No negative numbers - b is always <= a for subtraction
+        function generateProblem() {
+            const ops = ['+', '-'];
+            const op = ops[getRandomInt(0, 1)];
+            let a, b, ans;
+            
+            if (op === '+') {
+                a = getRandomInt(10, 99);
+                b = getRandomInt(10, 99);
+                ans = a + b;
+            } else {
+                a = getRandomInt(10, 99);
+                b = getRandomInt(10, a); // b <= a, so result is always >= 0
+                ans = a - b;
+            }
+            
+            return { text: `${a} ${op} ${b}`, answer: ans };
+        }
 
         function showToast(message) {
             els.toast.textContent = message;
@@ -459,6 +470,22 @@ function generateProblem() {
         function hideToast() {
             els.toast.classList.remove('show');
         }
+
+        // ✅ Show/hide floating button based on input
+        els.input.addEventListener('input', function() {
+            if (els.input.value.trim() !== '' && !screens.task.classList.contains('hidden')) {
+                floatingBtn.classList.remove('hidden');
+            } else {
+                floatingBtn.classList.add('hidden');
+            }
+        });
+
+        // ✅ Floating button click handler
+        floatingBtn.addEventListener('click', function() {
+            if (!isDistractionActive) {
+                submitAnswer();
+            }
+        });
 
         // --- Core Logic ---
 
@@ -487,6 +514,7 @@ function generateProblem() {
             distractionQueue = [];
             isDistractionActive = false;
             els.modal.classList.add('hidden');
+            floatingBtn.classList.add('hidden');
 
             showScreen('task');
             currentProblem = generateProblem();
@@ -505,7 +533,6 @@ function generateProblem() {
 
         function scheduleDistractionsQueue(count, minInterval, maxInterval) {
             distractionQueue = [];
-            // First window: ultra-fast 0.5-1.5 seconds
             let cumulativeDelay = getRandomInt(500, 1500);
             
             for (let i = 0; i < count; i++) {
@@ -539,6 +566,7 @@ function generateProblem() {
         function triggerDistraction(message) {
             isDistractionActive = true;
             els.modalText.textContent = message;
+            floatingBtn.classList.add('hidden'); // Hide floating button during distraction
             
             const modalWidth = 220;
             const modalHeight = 150;
@@ -556,7 +584,6 @@ function generateProblem() {
             els.modal.classList.remove('hidden');
         }
 
-        // ✅ ADDED: Missing function to close distraction modal
         function closeDistraction() {
             els.modal.classList.add('hidden');
             isDistractionActive = false;
@@ -565,11 +592,17 @@ function generateProblem() {
             els.input.focus(); 
         }
 
-        // ✅ ADDED: Missing function to submit answer and proceed
         function submitAnswer() {
             if (isDistractionActive) return; 
 
-            const userVal = parseInt(els.input.value);
+            const rawValue = els.input.value.trim();
+            const userVal = rawValue === '' ? NaN : parseInt(rawValue, 10);
+            
+            if (isNaN(userVal) || userVal < 0) {
+                els.input.focus();
+                return;
+            }
+
             const endTime = Date.now();
             const reactionTime = endTime - startTime;
 
@@ -583,9 +616,9 @@ function generateProblem() {
                 timestamp: new Date().toISOString()
             });
 
-            // Clear pending distractions
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
+            floatingBtn.classList.add('hidden');
 
             currentQuestionIndex++;
 
@@ -614,13 +647,11 @@ function generateProblem() {
 
             showScreen('final');
             
-            // --- Подсчет статистики ---
             const calcAvg = (arr) => arr.length ? (arr.reduce((a, b) => a + b.timeMs, 0) / arr.length).toFixed(0) : 0;
             const avgA = parseFloat(calcAvg(results.A));
             const avgB = parseFloat(calcAvg(results.B));
             const avgC = parseFloat(calcAvg(results.C));
             
-            // Адаптация (улучшение внутри стресса)
             let adaptation = 0;
             if (results.B.length >= 10) {
                 const firstHalf = results.B.slice(0, 5).reduce((a,b)=>a+b.timeMs,0)/5;
@@ -628,11 +659,9 @@ function generateProblem() {
                 adaptation = ((firstHalf - secondHalf) / firstHalf * 100).toFixed(1);
             }
             
-            // Истощение (сравнение А и С)
             const exhaustion = ((avgC - avgA) / avgA * 100).toFixed(1);
 
-            // --- ОТПРАВКА ДАННЫХ В GOOGLE ТАБЛИЦУ ---
-            // FIXED: Removed trailing spaces in URL
+            // ⚠️ ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT
             const scriptURL = 'https://script.google.com/macros/s/AKfycbyT0_qTUkJDEDwUFDv737xpMCJyhMeGrWXQUcPOwLMCfc5VkaNns9gKff2WMmCOT2_U/exec';
             
             const payload = {
@@ -646,7 +675,6 @@ function generateProblem() {
                 fullData: JSON.stringify(results)
             };
 
-            // Отправляем данные фоном
             fetch(scriptURL, { method: 'POST', body: new URLSearchParams(payload) })
                 .then(response => {
                     console.log('Данные успешно отправлены!', response);
@@ -661,7 +689,6 @@ function generateProblem() {
             console.log(payload);
         }
 
-        // ✅ Event listeners (were outside function scope before)
         els.input.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') submitAnswer();
         });
@@ -674,7 +701,4 @@ function generateProblem() {
 
     </script>
 </body>
-
 </html>
-
-
