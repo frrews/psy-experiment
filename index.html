@@ -51,6 +51,14 @@
             font-size: 2.5rem;
             font-weight: bold;
             margin: 1.5rem 0;
+            transition: filter 0.2s ease, opacity 0.2s ease;
+        }
+
+        /* 🔒 Размытие примера во время дистракции */
+        .problem.blurred {
+            filter: blur(8px);
+            opacity: 0.3;
+            user-select: none;
         }
 
         input[type="number"], input[type="text"] {
@@ -403,16 +411,16 @@
 
         // Ultra-fast intervals for maximum cognitive load
         const BLOCK_B_DISTRIBUTION = [
-            { count: 5, minInterval: 200, maxInterval: 1000 },
-            { count: 5, minInterval: 300, maxInterval: 900 },
-            { count: 5, minInterval: 200, maxInterval: 1000 },
-            { count: 5, minInterval: 200, maxInterval: 1000 },
-            { count: 5, minInterval: 300, maxInterval: 1000 },
+            { count: 5, minInterval: 100, maxInterval: 1000 },
+            { count: 5, minInterval: 100, maxInterval: 900 },
+            { count: 5, minInterval: 100, maxInterval: 1000 },
+            { count: 5, minInterval: 100, maxInterval: 1000 },
+            { count: 5, minInterval: 100, maxInterval: 1000 },
             { count: 3, minInterval: 100, maxInterval: 900 },
             { count: 3, minInterval: 100, maxInterval: 1000 },
-            { count: 3, minInterval: 300, maxInterval: 900 },
+            { count: 3, minInterval: 100, maxInterval: 900 },
             { count: 4, minInterval: 100, maxInterval: 900 },
-            { count: 4, minInterval: 200, maxInterval: 1000 }
+            { count: 4, minInterval: 100, maxInterval: 1000 }
         ];
         
         function shuffleArray(array) {
@@ -527,6 +535,7 @@
             els.blocker.classList.remove('active');
             els.input.disabled = false;
             els.submitBtn.disabled = false;
+            els.problem.classList.remove('blurred'); // 🔓 Убираем размытие
 
             showScreen('task');
             currentProblem = generateProblem();
@@ -579,10 +588,11 @@
             isDistractionActive = true;
             els.modalText.textContent = message;
             
-            // 🔒 Блокируем ввод
+            // 🔒 Блокируем ввод + размываем пример
             els.blocker.classList.add('active');
             els.input.disabled = true;
             els.submitBtn.disabled = true;
+            els.problem.classList.add('blurred'); // 🔒 Размытие примера
             
             // Позиционирование в безопасной зоне (чтобы не нужно было скроллить)
             const modalWidth = 220;
@@ -606,10 +616,11 @@
             els.modal.classList.add('hidden');
             isDistractionActive = false;
             
-            // 🔓 Разблокируем ввод
+            // 🔓 Разблокируем ввод + убираем размытие
             els.blocker.classList.remove('active');
             els.input.disabled = false;
             els.submitBtn.disabled = false;
+            els.problem.classList.remove('blurred'); // 🔓 Убираем размытие
             
             distractionQueue.shift();
             processDistractionQueue();
@@ -727,4 +738,3 @@
     </script>
 </body>
 </html>
-
