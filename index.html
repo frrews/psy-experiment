@@ -431,14 +431,25 @@
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-        function generateProblem() {
-            const ops = ['+', '-'];
-            const op = ops[getRandomInt(0, 1)];
-            let a = getRandomInt(10, 99);
-            let b = getRandomInt(10, 99);
-            let ans = op === '+' ? a + b : a - b;
-            return { text: `${a} ${op} ${b}`, answer: ans };
-        }
+function generateProblem() {
+    const ops = ['+', '-'];
+    const op = ops[getRandomInt(0, 1)];
+    let a, b, ans;
+    
+    if (op === '+') {
+        // Сложение: просто два двузначных числа
+        a = getRandomInt(10, 99);
+        b = getRandomInt(10, 99);
+        ans = a + b;
+    } else {
+        // Вычитание: гарантируем, что результат неотрицательный
+        a = getRandomInt(10, 99);
+        b = getRandomInt(10, a); // b не больше a → результат всегда >= 0
+        ans = a - b;
+    }
+    
+    return { text: `${a} ${op} ${b}`, answer: ans };
+}
 
         function showToast(message) {
             els.toast.textContent = message;
@@ -665,4 +676,5 @@
 </body>
 
 </html>
+
 
