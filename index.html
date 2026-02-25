@@ -556,6 +556,37 @@
             document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
         }
 
+        // 🔥 FIXED: Get safe spawn position (doesn't cover input/problem)
+        function getSafeSpawnPosition() {
+            const modalWidth = 220;
+            const modalHeight = 150;
+            const padding = 30;
+            
+            // Get position of input and problem elements
+            const inputRect = els.input.getBoundingClientRect();
+            const problemRect = els.problem.getBoundingClientRect();
+            
+            // Define safe zone (avoid center-bottom where input is)
+            const safeZones = [
+                // Top-left
+                { x: padding, y: padding, maxX: window.innerWidth / 2 - modalWidth, maxY: problemRect.bottom + padding },
+                // Top-right
+                { x: window.innerWidth / 2 + modalWidth, y: padding, maxX: window.innerWidth - modalWidth - padding, maxY: problemRect.bottom + padding },
+                // Right side
+                { x: window.innerWidth - modalWidth - padding, y: problemRect.bottom + padding, maxX: window.innerWidth - modalWidth - padding, maxY: window.innerHeight - modalHeight - padding },
+                // Left side
+                { x: padding, y: problemRect.bottom + padding, maxX: window.innerWidth / 2 - modalWidth, maxY: window.innerHeight - modalHeight - padding }
+            ];
+            
+            // Pick random safe zone
+            const zone = safeZones[getRandomInt(0, safeZones.length - 1)];
+            
+            const randomX = getRandomInt(zone.x, Math.max(zone.x, zone.maxX));
+            const randomY = getRandomInt(zone.y, Math.max(zone.y, zone.maxY));
+            
+            return { x: randomX, y: randomY };
+        }
+
         // 🔥 FIXED: Spawn window with guaranteed respawn
         function spawnWindow(message = null) {
             if (windowsSpawnedThisQuestion >= MAX_WINDOWS_PER_QUESTION) return false;
@@ -570,20 +601,12 @@
                 <button class="btn modal-btn">Закрыть</button>
             `;
             
-            const modalWidth = 220;
-            const modalHeight = 150;
-            const padding = 30;
+            // 🔥 FIXED: Get safe position
+            const pos = getSafeSpawnPosition();
+            modal.style.left = pos.x + 'px';
+            modal.style.top = pos.y + 'px';
             
-            const maxX = Math.max(padding, window.innerWidth - modalWidth - padding);
-            const maxY = Math.max(padding, window.innerHeight - modalHeight - padding);
-            const safeMaxY = Math.min(maxY, window.innerHeight - modalHeight - 50);
-            
-            const randomX = getRandomInt(padding, maxX);
-            const randomY = getRandomInt(padding, safeMaxY);
-            
-            modal.style.left = randomX + 'px';
-            modal.style.top = randomY + 'px';
-            
+            // 🔥 FIXED: Close button with guaranteed respawn
             modal.querySelector('.modal-btn').onclick = () => {
                 modal.remove();
                 
@@ -660,7 +683,7 @@
             processDistractionQueue();
         }
 
-        // 🔥 FIXED: Queue respects the spawn limit
+        // 🔥 FIXED: Only spawn first window from queue, rest from respawn
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
             
@@ -668,11 +691,11 @@
             
             nextDistractionTimer = setTimeout(() => {
                 if (!screens.task.classList.contains('hidden')) {
-                    if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
+                    // 🔥 FIXED: Only spawn first window from queue
+                    if (windowsSpawnedThisQuestion === 0) {
                         spawnWindow(nextDistraction.message);
                     }
-                }
-                if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
+                    // 🔥 FIXED: Continue queue to schedule respawn trigger
                     processDistractionQueue();
                 }
             }, nextDistraction.delay);
