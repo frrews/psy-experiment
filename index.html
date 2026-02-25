@@ -316,8 +316,8 @@
                     <label>2. Как часто вы отвлекались на всплывающие окна?</label>
                     <div class="survey-options">
                         <label><input type="radio" name="distractionFocus" value="always" required> Читал текст в каждом окне</label>
-                        <label><input type="radio" name="distractionFocus" value="sometimes"> Иногда читал, иногда закрывал сразу</label>
-                        <label><input type="radio" name="distractionFocus" value="never"> Закрывал сразу, не читая</label>
+                        <label><input type="radio" name="distractionFocus" value="sometimes"> Иногда читал, иногда игнорировал/закрывал</label>
+                        <label><input type="radio" name="distractionFocus" value="never"> Игнорироал, не читая</label>
                     </div>
                 </div>
 
@@ -559,8 +559,7 @@
             modals.forEach(m => m.remove());
         }
 
-// 🔥 BALANCED: Desktop = original, Mobile = more zones but with good padding
-// 🔥 MOBILE KEYBOARD FIX: Better vertical distribution
+// 🔥 MOBILE KEYBOARD FIX: Forced balanced distribution
 function getSafeSpawnPosition() {
     const modalWidth = 200;
     const modalHeight = 140;
@@ -572,80 +571,95 @@ function getSafeSpawnPosition() {
         const inputRect = els.input.getBoundingClientRect();
         const btnRect = els.submitBtn.getBoundingClientRect();
         
-        // Используем screen.height для стабильности
-        const viewportHeight = window.screen.height;
+        // Используем screen.height как базу, но корректируем под реальную высоту окна
+        // Если клавиатура открыта, window.innerHeight будет меньше screen.height
+        const availableHeight = window.innerHeight; 
+        const isKeyboardOpen = availableHeight < window.screen.height * 0.8;
         
-        // 🔥 Запретная зона — только самый центр (ввод + кнопка)
-        // Пример можно слегка перекрывать снизу, но ввод и кнопку нельзя!
-        const forbidden = {
-            top: inputRect.top - 40,           // 40px выше поля ввода (пример можно задевать)
-            bottom: viewportHeight - 50,       // Защита от самой низины (где клавиатура или край)
-            left: Math.min(problemRect.left, inputRect.left) - 20,
-            right: Math.max(problemRect.right, inputRect.right) + 20
-        };
+        // 🔥 Запретная зона: Ввод + Кнопка + небольшой запас
+        // Пример можно перекрывать, ввод и кнопку - нельзя!
+        const forbiddenTop = inputRect.top - 20;   // Граница сверху (чуть выше ввода)
+        const forbiddenBottom = isKeyboardOpen ? availableHeight : btnRect.bottom + 20; // Граница снизу
         
         const zones = [];
         
-        // 1. ВЕРХНЯЯ ЗОНА — расширена вниз до самого forbidden.top
-        // Теперь окна могут появляться прямо над полем ввода, частично заходя на пример
-        if (forbidden.top > modalHeight + padding) {
+        // 1. ВЕРХНЯЯ ЗОНА (от верха экрана до ввода)
+        // Должна быть хотя бы 100px высотой, чтобы окно влезло
+        if (forbiddenTop > modalHeight + padding) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
                 yMin: padding,
-                yMax: forbidden.top - modalHeight // 🔥 Убрали лишний запас, пусть будут ближе
+                yMax: forbiddenTop - modalHeight - padding,
+                weight: 1 // Обычный вес
             });
         }
         
-        // 2. Левая зона (если есть место по бокам)
-        if (forbidden.left > modalWidth + padding * 2) {
-            zones.push({
-                xMin: padding,
-                xMax: forbidden.left - modalWidth - padding,
-                yMin: padding,
-                yMax: viewportHeight - modalHeight - padding
-            });
-        }
+        // 2. НИЖНЯЯ ЗОНА (от кнопки/клавиатуры до низа экрана)
+        // Делаем её приоритетной, если есть место
+        const bottomZoneStart = Math.max(btnRect.bottom + 10, isKeyboardOpen ? availableHeight - 10 : btnRect.bottom + 10);
+        const bottomZoneAvailable = availableHeight - bottomZoneStart;
         
-        // 3. Правая зона (если есть место по бокам)
-        if (window.innerWidth - forbidden.right > modalWidth + padding * 2) {
-            zones.push({
-                xMin: forbidden.right + padding,
-                xMax: window.innerWidth - modalWidth - padding,
-                yMin: padding,
-                yMax: viewportHeight - modalHeight - padding
-            });
-        }
-        
-        // 4. НИЖНЯЯ ЗОНА — поднята выше, чтобы не мешать клавиатуре, но быть ближе к задаче
-        // Разрешаем появляться ниже кнопки, если там есть хотя бы 100px места
-        const safeBottomStart = Math.max(forbidden.bottom, btnRect.bottom + 10);
-        if (viewportHeight - safeBottomStart > modalHeight + padding) {
+        if (bottomZoneAvailable > modalHeight + padding) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
-                yMin: safeBottomStart + padding,
-                yMax: viewportHeight - modalHeight - padding
+                yMin: bottomZoneStart + padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 2 // 🔥 Увеличенный вес! Выбирается в 2 раза чаще
             });
         }
         
-        // Фоллбэк: верхние углы
+        // 3. ЛЕВАЯ ЗОНА (только если экран достаточно широкий и есть место по бокам)
+        // Проверяем, есть ли хотя бы 60px слева от контента
+        const leftSpace = Math.min(problemRect.left, inputRect.left);
+        if (leftSpace > modalWidth + padding) {
+            zones.push({
+                xMin: padding,
+                xMax: leftSpace - modalWidth - padding,
+                yMin: padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 1
+            });
+        }
+        
+        // 4. ПРАВАЯ ЗОНА
+        const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
+        if (rightSpace > modalWidth + padding) {
+            zones.push({
+                xMin: window.innerWidth - rightSpace + padding,
+                xMax: window.innerWidth - modalWidth - padding,
+                yMin: padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 1
+            });
+        }
+        
+        // Фоллбэк: если совсем тесно (например, огромная клавиатура), кидаем в самый верх
         if (zones.length === 0) {
-            const side = Math.random() > 0.5 ? 'left' : 'right';
             return {
-                x: side === 'left' ? padding : window.innerWidth - modalWidth - padding,
-                y: Math.min(padding, forbidden.top - modalHeight - padding)
+                x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding,
+                y: padding
             };
         }
         
-        const zone = zones[getRandomInt(0, zones.length - 1)];
+        // 🔥 ВЫБОР ЗОНЫ С УЧЕТОМ ВЕСА
+        // Создаем массив, где зоны с большим весом встречаются чаще
+        const weightedZones = [];
+        zones.forEach(zone => {
+            for (let i = 0; i < zone.weight; i++) {
+                weightedZones.push(zone);
+            }
+        });
+        
+        const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
         const randomX = getRandomInt(zone.xMin, zone.xMax);
         const randomY = getRandomInt(zone.yMin, zone.yMax);
         
         return { x: randomX, y: randomY };
     }
     
-    // 🔥 НА ДЕСКТОПЕ (>= 480px) — оригинальная логика (без изменений)
+    // 🔥 НА ДЕСКТОПЕ (>= 480px) — оригинальная логика
     const problemRect = els.problem.getBoundingClientRect();
     const inputRect = els.input.getBoundingClientRect();
     const btnRect = els.submitBtn.getBoundingClientRect();
@@ -659,7 +673,7 @@ function getSafeSpawnPosition() {
     
     const zones = [];
     
-    // 1. Верхний левый угол
+    // 1. Верхний левый
     if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
         zones.push({
             xMin: padding,
@@ -668,8 +682,7 @@ function getSafeSpawnPosition() {
             yMax: forbidden.top - modalHeight - padding
         });
     }
-    
-    // 2. Верхний правый угол
+    // 2. Верхний правый
     if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
         zones.push({
             xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
@@ -678,8 +691,7 @@ function getSafeSpawnPosition() {
             yMax: forbidden.top - modalHeight - padding
         });
     }
-    
-    // 3. Нижний левый угол
+    // 3. Нижний левый
     if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
         zones.push({
             xMin: padding,
@@ -688,8 +700,7 @@ function getSafeSpawnPosition() {
             yMax: window.innerHeight - modalHeight - padding
         });
     }
-    
-    // 4. Нижний правый угол
+    // 4. Нижний правый
     if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
         zones.push({
             xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
@@ -954,6 +965,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
