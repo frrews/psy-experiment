@@ -558,63 +558,105 @@
             modals.forEach(m => m.remove());
         }
 
-// 🔥 ULTRA-SAFE: Mobile-friendly positioning that NEVER covers problem/input
+// 🔥 SMART: Spawn anywhere EXCEPT the central area with problem/input
 function getSafeSpawnPosition() {
-    const modalWidth = 190;  // Ещё чуть уже для надёжности
-    const modalHeight = 130;
-    const padding = 20;
+    const modalWidth = 200;
+    const modalHeight = 140;
+    const padding = 15;
     
-    // 🔥 На мобильных (ширина < 480px) — только верхние углы с большим запасом
-    if (window.innerWidth < 480) {
-        // Верхний левый или правый угол — 50/50
-        const side = Math.random() > 0.5 ? 'left' : 'right';
-        
-        // 🔥 Большой отступ от центра, где находятся пример и ввод
-        const safeTop = 10;  // Минимальный отступ сверху
-        const safeSideMargin = 15;  // Отступ от бокового края
-        
-        if (side === 'left') {
-            return {
-                x: safeSideMargin,
-                y: safeTop
-            };
-        } else {
-            return {
-                x: window.innerWidth - modalWidth - safeSideMargin,
-                y: safeTop
-            };
+    // Получаем координаты элементов, которые нельзя перекрывать
+    const problemRect = els.problem.getBoundingClientRect();
+    const inputRect = els.input.getBoundingClientRect();
+    const btnRect = els.submitBtn.getBoundingClientRect();
+    
+    // 🔥 Создаём "запретный прямоугольник" вокруг важных элементов + запас
+    const forbidden = {
+        top: Math.min(problemRect.top, inputRect.top) - 30,
+        bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
+        left: Math.min(problemRect.left, inputRect.left) - 20,
+        right: Math.max(problemRect.right, inputRect.right) + 20
+    };
+    
+    // 🔥 Определяем 4 потенциальные зоны (углы экрана)
+    const zones = [];
+    
+    // 1. Верхний левый угол
+    if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
+        zones.push({
+            xMin: padding,
+            xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2),
+            yMin: padding,
+            yMax: forbidden.top - modalHeight - padding
+        });
+    }
+    
+    // 2. Верхний правый угол
+    if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
+        zones.push({
+            xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
+            xMax: window.innerWidth - modalWidth - padding,
+            yMin: padding,
+            yMax: forbidden.top - modalHeight - padding
+        });
+    }
+    
+    // 3. Нижний левый угол
+    if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+        zones.push({
+            xMin: padding,
+            xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2),
+            yMin: forbidden.bottom + padding,
+            yMax: window.innerHeight - modalHeight - padding
+        });
+    }
+    
+    // 4. Нижний правый угол
+    if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+        zones.push({
+            xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
+            xMax: window.innerWidth - modalWidth - padding,
+            yMin: forbidden.bottom + padding,
+            yMax: window.innerHeight - modalHeight - padding
+        });
+    }
+    
+    // 🔥 Если углов мало (маленький экран) — добавляем боковые зоны
+    if (zones.length < 2 && window.innerWidth > 360) {
+        // Левая полоса (если есть место по ширине)
+        if (forbidden.left > modalWidth + padding * 2) {
+            zones.push({
+                xMin: padding,
+                xMax: forbidden.left - modalWidth - padding,
+                yMin: padding,
+                yMax: window.innerHeight - modalHeight - padding
+            });
+        }
+        // Правая полоса
+        if (window.innerWidth - forbidden.right > modalWidth + padding * 2) {
+            zones.push({
+                xMin: forbidden.right + padding,
+                xMax: window.innerWidth - modalWidth - padding,
+                yMin: padding,
+                yMax: window.innerHeight - modalHeight - padding
+            });
         }
     }
     
-    // 🔥 На десктопе — можно использовать больше зон, но всё равно избегаем центра
-    const problemRect = els.problem.getBoundingClientRect();
-    const inputRect = els.input.getBoundingClientRect();
-    
-    // Запретная зона: всё, что ниже середины экрана (там пример и ввод)
-    const forbiddenBottom = window.innerHeight * 0.45;
-    
-    // Доступные зоны: только верхняя часть экрана
-    const availableTop = padding;
-    const availableBottom = Math.min(forbiddenBottom - modalHeight - padding, window.innerHeight / 3);
-    
-    if (availableBottom < availableTop) {
-        // Если места мало — просто верхний угол
+    // 🔥 Фоллбэк: если совсем тесно — верхние углы с минимальными отступами
+    if (zones.length === 0) {
+        const side = Math.random() > 0.5 ? 'left' : 'right';
         return {
-            x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding,
+            x: side === 'left' ? padding : window.innerWidth - modalWidth - padding,
             y: padding
         };
     }
     
-    // Случайная позиция в верхней трети экрана, слева или справа
-    const side = Math.random() > 0.5 ? 'left' : 'right';
-    const randomY = getRandomInt(availableTop, availableBottom);
+    // 🔥 Выбираем случайную зону и случайную позицию внутри неё
+    const zone = zones[getRandomInt(0, zones.length - 1)];
+    const randomX = getRandomInt(zone.xMin, zone.xMax);
+    const randomY = getRandomInt(zone.yMin, zone.yMax);
     
-    return {
-        x: side === 'left' 
-            ? getRandomInt(padding, padding + 40) 
-            : getRandomInt(window.innerWidth - modalWidth - padding - 40, window.innerWidth - modalWidth - padding),
-        y: randomY
-    };
+    return { x: randomX, y: randomY };
 }
 
         // 🔥 FIXED: Spawn window, track windowsOnScreen, respawn on close
@@ -859,6 +901,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
