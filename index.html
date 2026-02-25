@@ -899,7 +899,7 @@ function getSafeSpawnPosition() {
             const avgTimeC = results.C.length ? (results.C.reduce((s,r)=>s+r.timeMs,0)/results.C.length).toFixed(0) : 0;
             const totalErrors = [...results.A, ...results.B, ...results.C].filter(r => !r.isCorrect).length;
 
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbyT0_qTUkJDEDwUFDv737xpMCJyhMeGrWXQUcPOwLMCfc5VkaNns9gKff2WMmCOT2_U/exec';
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbz9r-7YXy2AVgVz8ex4xg19tUu2GkB0ItCzxpVJYVD83v6qqCbY3wdG_zmZqFvWN5kp/exec';
             
             const payload = {
                 StartTime: experimentStartTime,
@@ -951,6 +951,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
