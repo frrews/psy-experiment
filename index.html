@@ -560,38 +560,40 @@
         }
 
 // 🔥 BALANCED: Desktop = original, Mobile = more zones but with good padding
-// 🔥 MOBILE KEYBOARD FIX: Use screen.height instead of innerHeight
+// 🔥 MOBILE KEYBOARD FIX: Better vertical distribution
 function getSafeSpawnPosition() {
     const modalWidth = 200;
     const modalHeight = 140;
     const padding = 15;
     
-    // 🔥 НА МОБИЛКАХ (< 480px) — учитываем клавиатуру
+    // 🔥 НА МОБИЛКАХ (< 480px)
     if (window.innerWidth < 480) {
         const problemRect = els.problem.getBoundingClientRect();
         const inputRect = els.input.getBoundingClientRect();
         const btnRect = els.submitBtn.getBoundingClientRect();
         
-        // 🔥 Используем screen.height для стабильности (не меняется при открытии клавиатуры)
+        // Используем screen.height для стабильности
         const viewportHeight = window.screen.height;
         
-        // 🔥 Запретная зона — центр с хорошим запасом
+        // 🔥 Запретная зона — только самый центр (ввод + кнопка)
+        // Пример можно слегка перекрывать снизу, но ввод и кнопку нельзя!
         const forbidden = {
-            top: problemRect.top - 50,
-            bottom: Math.max(btnRect.top, inputRect.bottom + 150) - 20, // +150px запас на клавиатуру
-            left: Math.min(problemRect.left, inputRect.left) - 30,
-            right: Math.max(problemRect.right, inputRect.right) + 30
+            top: inputRect.top - 40,           // 40px выше поля ввода (пример можно задевать)
+            bottom: viewportHeight - 50,       // Защита от самой низины (где клавиатура или край)
+            left: Math.min(problemRect.left, inputRect.left) - 20,
+            right: Math.max(problemRect.right, inputRect.right) + 20
         };
         
         const zones = [];
         
-        // 1. Верхняя зона (над примером) — всегда доступна
+        // 1. ВЕРХНЯЯ ЗОНА — расширена вниз до самого forbidden.top
+        // Теперь окна могут появляться прямо над полем ввода, частично заходя на пример
         if (forbidden.top > modalHeight + padding) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
                 yMin: padding,
-                yMax: forbidden.top - modalHeight - padding
+                yMax: forbidden.top - modalHeight // 🔥 Убрали лишний запас, пусть будут ближе
             });
         }
         
@@ -615,13 +617,14 @@ function getSafeSpawnPosition() {
             });
         }
         
-        // 🔥 Нижнюю зону на мобильных убираем — там клавиатура
-        // 4. Нижняя зона — только если точно есть место (на больших телефонах)
-        if (viewportHeight - forbidden.bottom > modalHeight + padding + 200) {
+        // 4. НИЖНЯЯ ЗОНА — поднята выше, чтобы не мешать клавиатуре, но быть ближе к задаче
+        // Разрешаем появляться ниже кнопки, если там есть хотя бы 100px места
+        const safeBottomStart = Math.max(forbidden.bottom, btnRect.bottom + 10);
+        if (viewportHeight - safeBottomStart > modalHeight + padding) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
-                yMin: forbidden.bottom + padding,
+                yMin: safeBottomStart + padding,
                 yMax: viewportHeight - modalHeight - padding
             });
         }
@@ -631,7 +634,7 @@ function getSafeSpawnPosition() {
             const side = Math.random() > 0.5 ? 'left' : 'right';
             return {
                 x: side === 'left' ? padding : window.innerWidth - modalWidth - padding,
-                y: padding
+                y: Math.min(padding, forbidden.top - modalHeight - padding)
             };
         }
         
@@ -951,6 +954,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
