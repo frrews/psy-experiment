@@ -94,7 +94,6 @@
 
         .hidden { display: none !important; }
 
-        /* --- Distraction Modal (Draggable & Non-blocking) --- */
         .distraction-modal {
             position: fixed;
             width: 200px;
@@ -151,14 +150,12 @@
             cursor: pointer;
         }
 
-        /* Progress Bar */
         .progress {
             margin-top: 1rem;
             font-size: 0.85rem;
             color: #9ca3af;
         }
 
-        /* --- Toast Notification --- */
         #toast-container {
             position: fixed;
             top: 10px;
@@ -188,7 +185,6 @@
             transform: translateY(0);
         }
 
-        /* --- Survey Styles --- */
         .survey-question {
             text-align: left;
             margin-bottom: 1.2rem;
@@ -215,7 +211,6 @@
             height: 16px;
         }
 
-        /* --- Block Transition Modal --- */
         #block-transition-modal {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -254,7 +249,6 @@
             background: var(--primary);
         }
 
-        /* --- Mobile Specific Adjustments --- */
         @media (max-width: 380px) {
             .container { padding: 1rem; }
             .problem { font-size: 2rem; }
@@ -273,13 +267,11 @@
 </head>
 <body>
 
-    <!-- Toast Container -->
     <div id="toast-container">
         <div id="toast" class="toast">Уведомление</div>
     </div>
 
     <div class="container" id="app">
-        <!-- Start Screen with Instructions -->
         <div id="start-screen">
             <h1>Тест на концентрацию внимания</h1>
             
@@ -298,7 +290,6 @@
             <button class="btn" onclick="startExperiment()">Начать тест</button>
         </div>
 
-        <!-- Task Screen -->
         <div id="task-screen" class="hidden">
             <div class="progress" id="progress-text">Вопрос 1 из 10</div>
             <div class="problem" id="problem-display">25 + 14</div>
@@ -306,7 +297,6 @@
             <button class="btn" id="submit-btn" onclick="submitAnswer()">Далее</button>
         </div>
 
-        <!-- Survey Screen (5 validation questions) -->
         <div id="survey-screen" class="hidden">
             <h2>Опрос</h2>
             <p style="font-size: 0.85rem; margin-bottom: 15px; color: #666;">Пожалуйста, ответьте честно. Это важно для анализа.</p>
@@ -360,7 +350,6 @@
             </form>
         </div>
 
-        <!-- Final Screen with Wait Message -->
         <div id="final-screen" class="hidden">
             <h1>Тест завершен</h1>
             <p style="font-size: 1rem; margin: 1rem 0;">🔄 Пожалуйста, подождите...</p>
@@ -369,7 +358,6 @@
         </div>
     </div>
 
-    <!-- Block Transition Modal -->
     <div id="block-transition-modal" class="hidden">
         <div class="modal-content">
             <h2 id="transition-title">Этап 2</h2>
@@ -379,7 +367,6 @@
     </div>
 
     <script>
-        // --- Configuration ---
         const QUESTIONS_PER_BLOCK = 10;
         const TOTAL_BLOCKS = 3;
         const BLOCK_SEQUENCE = ['A', 'B', 'C']; 
@@ -437,7 +424,6 @@
         
         let currentBlockBDistribution = shuffleArray([...BLOCK_B_DISTRIBUTION]);
 
-        // --- State ---
         let currentBlockIndex = 0;
         let currentQuestionIndex = 0;
         let currentProblem = {};
@@ -448,11 +434,8 @@
         let surveyData = {};
         let experimentStartTime = null;
         let experimentEndTime = null;
-        
-        // Window tracking
         let windowsSpawnedThisQuestion = 0;
         
-        // Drag state
         let dragState = {
             isDragging: false,
             modal: null,
@@ -460,7 +443,6 @@
             offsetY: 0
         };
 
-        // --- DOM Elements ---
         const screens = {
             start: document.getElementById('start-screen'),
             task: document.getElementById('task-screen'),
@@ -479,7 +461,6 @@
             saveStatus: document.getElementById('save-status')
         };
 
-        // --- Utils ---
         function showScreen(screenName) {
             Object.values(screens).forEach(el => el.classList.add('hidden'));
             screens[screenName].classList.remove('hidden');
@@ -516,8 +497,6 @@
             els.toast.classList.remove('show');
         }
 
-        // --- Draggable Modal Logic ---
-        
         function makeDraggable(modal) {
             modal.addEventListener('mousedown', dragStart);
             document.addEventListener('mousemove', dragMove);
@@ -573,12 +552,11 @@
             dragState.modal = null;
         }
 
-        // Clear all distraction modals
         function clearAllDistractions() {
             document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
         }
 
-        // Spawn a window with guaranteed respawn on close
+        // 🔥 FIXED: Spawn window with guaranteed respawn
         function spawnWindow(message = null) {
             if (windowsSpawnedThisQuestion >= MAX_WINDOWS_PER_QUESTION) return false;
             
@@ -606,11 +584,10 @@
             modal.style.left = randomX + 'px';
             modal.style.top = randomY + 'px';
             
-            // Close button with guaranteed respawn
             modal.querySelector('.modal-btn').onclick = () => {
                 modal.remove();
                 
-                // Guaranteed respawn if under limit
+                // 🔥 FIXED: Guaranteed respawn if under limit
                 if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
                     setTimeout(() => {
                         if (!screens.task.classList.contains('hidden')) {
@@ -625,8 +602,6 @@
             
             return true;
         }
-
-        // --- Core Logic ---
 
         function startExperiment() {
             experimentStartTime = new Date().toISOString();
@@ -650,10 +625,8 @@
         }
 
         function loadQuestion() {
-            // Reset window counter
             windowsSpawnedThisQuestion = 0;
             
-            // Clear timers and modals
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
             clearAllDistractions();
@@ -687,6 +660,7 @@
             processDistractionQueue();
         }
 
+        // 🔥 FIXED: Queue respects the spawn limit
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
             
@@ -694,9 +668,13 @@
             
             nextDistractionTimer = setTimeout(() => {
                 if (!screens.task.classList.contains('hidden')) {
-                    spawnWindow(nextDistraction.message);
+                    if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
+                        spawnWindow(nextDistraction.message);
+                    }
                 }
-                processDistractionQueue();
+                if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
+                    processDistractionQueue();
+                }
             }, nextDistraction.delay);
         }
 
@@ -743,7 +721,6 @@
             }
         }
 
-        // === FORMULAS FOR ADAPTATION & EXHAUSTION ===
         function calculateIntensity(blockData) {
             const correctAnswers = blockData.filter(r => r.isCorrect).length;
             const totalTimeSec = blockData.reduce((sum, r) => sum + r.timeMs, 0) / 1000;
@@ -818,7 +795,6 @@
             console.log(payload);
         }
 
-        // Event listeners
         els.input.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') submitAnswer();
         });
