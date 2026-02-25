@@ -558,28 +558,89 @@
             modals.forEach(m => m.remove());
         }
 
-        // 🔥 FIXED: Get safe spawn position (doesn't cover input/problem)
-        function getSafeSpawnPosition() {
-            const modalWidth = 220;
-            const modalHeight = 150;
-            const padding = 30;
-            
-            const inputRect = els.input.getBoundingClientRect();
-            const problemRect = els.problem.getBoundingClientRect();
-            
-            const safeZones = [
-                { x: padding, y: padding, maxX: window.innerWidth / 2 - modalWidth, maxY: problemRect.bottom + padding },
-                { x: window.innerWidth / 2 + modalWidth, y: padding, maxX: window.innerWidth - modalWidth - padding, maxY: problemRect.bottom + padding },
-                { x: window.innerWidth - modalWidth - padding, y: problemRect.bottom + padding, maxX: window.innerWidth - modalWidth - padding, maxY: window.innerHeight - modalHeight - padding },
-                { x: padding, y: problemRect.bottom + padding, maxX: window.innerWidth / 2 - modalWidth, maxY: window.innerHeight - modalHeight - padding }
-            ];
-            
-            const zone = safeZones[getRandomInt(0, safeZones.length - 1)];
-            const randomX = getRandomInt(zone.x, Math.max(zone.x, zone.maxX));
-            const randomY = getRandomInt(zone.y, Math.max(zone.y, zone.maxY));
-            
-            return { x: randomX, y: randomY };
+// 🔥 FIXED: Get safe spawn position that NEVER covers problem/input (mobile-friendly)
+function getSafeSpawnPosition() {
+    const modalWidth = 200;  // Чуть уже для мобильных
+    const modalHeight = 140;
+    const padding = 15;
+    
+    // Получаем реальные координаты элементов
+    const problemRect = els.problem.getBoundingClientRect();
+    const inputRect = els.input.getBoundingClientRect();
+    
+    // 🔥 Создаём "запретную зону" вокруг примера и ввода (с большим запасом)
+    const forbiddenTop = Math.min(problemRect.top, inputRect.top) - 20;
+    const forbiddenBottom = Math.max(problemRect.bottom, inputRect.bottom) + 20;
+    const forbiddenLeft = Math.min(problemRect.left, inputRect.left) - 10;
+    const forbiddenRight = Math.max(problemRect.right, inputRect.right) + 10;
+    
+    // 🔥 Определяем доступные зоны (углы экрана)
+    const zones = [];
+    
+    // Верхний левый угол
+    if (forbiddenTop > modalHeight + padding) {
+        zones.push({
+            x: padding,
+            y: padding,
+            width: Math.min(window.innerWidth / 2 - modalWidth - padding, forbiddenLeft - modalWidth - padding),
+            height: forbiddenTop - modalHeight - padding
+        });
+    }
+    
+    // Верхний правый угол
+    if (forbiddenTop > modalHeight + padding) {
+        zones.push({
+            x: Math.max(window.innerWidth / 2 + modalWidth, forbiddenRight + padding),
+            y: padding,
+            width: window.innerWidth - Math.max(window.innerWidth / 2 + modalWidth, forbiddenRight + padding) - padding,
+            height: forbiddenTop - modalHeight - padding
+        });
+    }
+    
+    // Нижний левый угол (если есть место под кнопкой "Далее")
+    const btnRect = els.submitBtn.getBoundingClientRect();
+    if (btnRect.top > forbiddenBottom + modalHeight + padding) {
+        zones.push({
+            x: padding,
+            y: forbiddenBottom + padding,
+            width: Math.min(window.innerWidth / 2 - modalWidth - padding, forbiddenLeft - modalWidth - padding),
+            height: btnRect.top - forbiddenBottom - modalHeight - padding
+        });
+    }
+    
+    // Нижний правый угол
+    if (btnRect.top > forbiddenBottom + modalHeight + padding) {
+        zones.push({
+            x: Math.max(window.innerWidth / 2 + modalWidth, forbiddenRight + padding),
+            y: forbiddenBottom + padding,
+            width: window.innerWidth - Math.max(window.innerWidth / 2 + modalWidth, forbiddenRight + padding) - padding,
+            height: btnRect.top - forbiddenBottom - modalHeight - padding
+        });
+    }
+    
+    // 🔥 Если зон нет (очень маленький экран) — используем верхние углы с минимальными отступами
+    if (zones.length === 0) {
+        // Пробуем верхний левый
+        if (window.innerWidth > modalWidth + padding * 2 && window.innerHeight > modalHeight + padding * 2) {
+            return {
+                x: getRandomInt(padding, Math.min(padding + 50, window.innerWidth / 2 - modalWidth)),
+                y: padding
+            };
         }
+        // Или верхний правый
+        return {
+            x: getRandomInt(Math.max(padding, window.innerWidth - modalWidth - padding - 50), window.innerWidth - modalWidth - padding),
+            y: padding
+        };
+    }
+    
+    // 🔥 Выбираем случайную зону и случайную позицию внутри неё
+    const zone = zones[getRandomInt(0, zones.length - 1)];
+    const randomX = getRandomInt(zone.x, Math.max(zone.x, zone.x + zone.width));
+    const randomY = getRandomInt(zone.y, Math.max(zone.y, zone.y + zone.height));
+    
+    return { x: randomX, y: randomY };
+}
 
         // 🔥 FIXED: Spawn window, track windowsOnScreen, respawn on close
         function spawnWindow(message = null) {
@@ -823,4 +884,5 @@
     </script>
 </body>
 </html>
+
 
