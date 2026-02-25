@@ -28,7 +28,7 @@
             overflow: hidden;
             padding: 10px;
             box-sizing: border-box;
-            user-select: none; /* Prevent text selection while dragging */
+            user-select: none;
         }
 
         .container {
@@ -112,7 +112,7 @@
             text-align: center;
             animation: popIn 0.2s ease-out;
             cursor: grab;
-            touch-action: none; /* Critical for drag on mobile */
+            touch-action: none;
         }
 
         .distraction-modal:active {
@@ -130,7 +130,7 @@
             color: var(--error);
             text-transform: uppercase;
             letter-spacing: 1px;
-            pointer-events: none; /* Let clicks pass to modal for dragging */
+            pointer-events: none;
         }
 
         .distraction-modal p {
@@ -149,7 +149,7 @@
             width: auto;
             margin: 0;
             min-height: 44px;
-            pointer-events: auto; /* Button must be clickable */
+            pointer-events: auto;
             cursor: pointer;
         }
 
@@ -291,6 +291,7 @@
                 • Отвечайте <strong>быстро и точно</strong>.<br>
                 • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
                 • Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать примеры.<br>
+                • При переходе к новому примеру все окна исчезнут.<br>
                 • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
                 <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
             </div>
@@ -516,19 +517,16 @@
         // --- Draggable Modal Logic ---
         
         function makeDraggable(modal) {
-            // Mouse events
             modal.addEventListener('mousedown', dragStart);
             document.addEventListener('mousemove', dragMove);
             document.addEventListener('mouseup', dragEnd);
             
-            // Touch events
             modal.addEventListener('touchstart', dragStart, { passive: false });
             document.addEventListener('touchmove', dragMove, { passive: false });
             document.addEventListener('touchend', dragEnd);
         }
 
         function dragStart(e) {
-            // Prevent drag if clicking the close button
             if (e.target.classList.contains('modal-btn')) return;
             
             e.preventDefault();
@@ -536,7 +534,6 @@
             const modal = e.currentTarget;
             const rect = modal.getBoundingClientRect();
             
-            // Get client coordinates
             const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
             const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
             
@@ -545,7 +542,6 @@
             dragState.offsetX = clientX - rect.left;
             dragState.offsetY = clientY - rect.top;
             
-            // Bring to front
             modal.style.zIndex = '2001';
         }
 
@@ -559,7 +555,6 @@
             let newX = clientX - dragState.offsetX;
             let newY = clientY - dragState.offsetY;
             
-            // Constrain to viewport
             const modalRect = dragState.modal.getBoundingClientRect();
             const padding = 10;
             
@@ -576,6 +571,11 @@
             }
             dragState.isDragging = false;
             dragState.modal = null;
+        }
+
+        // 🔥 NEW: Clear all distraction modals from screen
+        function clearAllDistractions() {
+            document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
         }
 
         // --- Core Logic ---
@@ -602,8 +602,10 @@
         }
 
         function loadQuestion() {
+            // 🔥 Clear pending timers and existing modals
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
+            clearAllDistractions(); // 🔥 NEW: Remove all on-screen modals
 
             showScreen('task');
             currentProblem = generateProblem();
@@ -612,9 +614,6 @@
             els.input.value = '';
             
             startTime = Date.now();
-            if (currentQuestionIndex === 0) {
-                // blockStartTime is not used in new formula, kept for compatibility
-            }
             els.input.focus();
 
             if (BLOCK_SEQUENCE[currentBlockIndex] === 'B') {
@@ -640,20 +639,17 @@
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
             
-            const nextDistraction = distractionQueue.shift(); // Remove from queue immediately
+            const nextDistraction = distractionQueue.shift();
             
             nextDistractionTimer = setTimeout(() => {
-                // Always trigger if we are still on the task screen
                 if (!screens.task.classList.contains('hidden')) {
                     triggerDistraction(nextDistraction.message);
                 }
-                // Continue processing the rest of the queue regardless
                 processDistractionQueue();
             }, nextDistraction.delay);
         }
 
         function triggerDistraction(message) {
-            // Create NEW modal element (non-blocking, independent)
             const modal = document.createElement('div');
             modal.className = 'distraction-modal';
             modal.innerHTML = `
@@ -662,7 +658,6 @@
                 <button class="btn modal-btn">Закрыть</button>
             `;
             
-            // Position in safe zone with slight randomization
             const modalWidth = 220;
             const modalHeight = 150;
             const padding = 30;
@@ -677,15 +672,11 @@
             modal.style.left = randomX + 'px';
             modal.style.top = randomY + 'px';
             
-            // Add close button handler
             modal.querySelector('.modal-btn').onclick = () => {
                 modal.remove();
             };
             
-            // Make draggable
             makeDraggable(modal);
-            
-            // Add to body
             document.body.appendChild(modal);
         }
 
@@ -726,15 +717,12 @@
                     showBlockTransition();
                 }
             } else {
-                loadQuestion();
+                loadQuestion(); // 🔥 This will clear old modals and start fresh
             }
         }
 
-        // === NEW FORMULAS FOR ADAPTATION & EXHAUSTION ===
+        // === FORMULAS FOR ADAPTATION & EXHAUSTION ===
         function calculateIntensity(blockData) {
-            // E = A / t
-            // A = number of correct answers
-            // t = total time in seconds
             const correctAnswers = blockData.filter(r => r.isCorrect).length;
             const totalTimeSec = blockData.reduce((sum, r) => sum + r.timeMs, 0) / 1000;
             return totalTimeSec > 0 ? correctAnswers / totalTimeSec : 0;
@@ -754,59 +742,43 @@
 
             showScreen('final');
             
-            // === CALCULATE NEW METRICS ===
-            // Adaptation: Block B, first half vs second half
+            // Calculate metrics
             const blockB_first = results.B.slice(0, 5);
             const blockB_second = results.B.slice(5, 10);
             const E1 = calculateIntensity(blockB_first);
             const E2 = calculateIntensity(blockB_second);
             const adaptation = E1 > 0 ? ((E1 - E2) / E1).toFixed(3) : 0;
             
-            // Exhaustion: Block A vs Block C
             const E3 = calculateIntensity(results.A);
             const E4 = calculateIntensity(results.C);
             const exhaustion = E3 > 0 ? ((E3 - E4) / E3).toFixed(3) : 0;
             
-            // Additional metrics for Google Sheets
             const avgTimeA = results.A.length ? (results.A.reduce((s,r)=>s+r.timeMs,0)/results.A.length).toFixed(0) : 0;
             const avgTimeB = results.B.length ? (results.B.reduce((s,r)=>s+r.timeMs,0)/results.B.length).toFixed(0) : 0;
             const avgTimeC = results.C.length ? (results.C.reduce((s,r)=>s+r.timeMs,0)/results.C.length).toFixed(0) : 0;
             const totalErrors = [...results.A, ...results.B, ...results.C].filter(r => !r.isCorrect).length;
 
-            // --- SEND TO GOOGLE SHEETS ---
+            // Send to Google Sheets
             const scriptURL = 'https://script.google.com/macros/s/AKfycbyT0_qTUkJDEDwUFDv737xpMCJyhMeGrWXQUcPOwLMCfc5VkaNns9gKff2WMmCOT2_U/exec';
             
             const payload = {
-                // Timestamps
                 StartTime: experimentStartTime,
                 EndTime: experimentEndTime,
-                
-                // Average times per block (ms)
                 AvgTimeA: avgTimeA,
                 AvgTimeB: avgTimeB,
                 AvgTimeC: avgTimeC,
-                
-                // Intensity metrics
                 E1: E1.toFixed(3),
                 E2: E2.toFixed(3),
                 E3: E3.toFixed(3),
                 E4: E4.toFixed(3),
-                
-                // Derived metrics
                 Adaptation: adaptation,
                 Exhaustion: exhaustion,
-                
-                // Quality control
                 TotalErrors: totalErrors,
-                
-                // Survey validation answers
                 Effort: surveyData.effort,
                 DistractionFocus: surveyData.distractionFocus,
                 Fatigue: surveyData.fatigue,
                 Checking: surveyData.checking,
                 Difficulty: surveyData.difficulty,
-                
-                // Full raw data for deep analysis
                 fullData: JSON.stringify(results)
             };
 
@@ -833,8 +805,7 @@
 
         document.addEventListener('keydown', function(e) {
             if (e.key === "Escape") {
-                // Close all distraction modals on Escape (optional)
-                document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
+                clearAllDistractions();
             }
         });
 
