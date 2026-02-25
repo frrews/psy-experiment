@@ -281,7 +281,7 @@
                 • Отвечайте <strong>быстро и точно</strong>.<br>
                 • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
                 • Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать примеры.<br>
-                • <strong>Важно:</strong> при закрытии окна появится новое (максимум 5 на задачу).<br>
+                • <strong>Важно:</strong> на экране может быть до 5 окон одновременно. При закрытии появится новое.<br>
                 • При переходе к новому примеру все окна исчезнут.<br>
                 • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
                 <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
@@ -370,7 +370,7 @@
         const QUESTIONS_PER_BLOCK = 10;
         const TOTAL_BLOCKS = 3;
         const BLOCK_SEQUENCE = ['A', 'B', 'C']; 
-        const MAX_WINDOWS_PER_QUESTION = 5;
+        const MAX_WINDOWS_ON_SCREEN = 5;
         const RESPAWN_INTERVAL_MIN = 200;
         const RESPAWN_INTERVAL_MAX = 800;
 
@@ -397,21 +397,21 @@
 
         const BLOCK_DESCRIPTIONS = {
             'A': { title: 'Этап 1: Контроль', desc: 'Решите 10 арифметических примеров в спокойной обстановке. Отвечайте точно и быстро.' },
-            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе будут появляться всплывающие окна (до 5 на задачу). При закрытии одного появится новое. Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать.' },
+            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе будут появляться всплывающие окна (до 5 одновременно). При закрытии появится новое. Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать.' },
             'C': { title: 'Этап 3: Восстановление', desc: 'Решите 10 примеров в спокойной обстановке. Помех больше не будет.' }
         };
 
         const BLOCK_B_DISTRIBUTION = [
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
-            { count: 5, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX }
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX },
+            { count: 10, minInterval: RESPAWN_INTERVAL_MIN, maxInterval: RESPAWN_INTERVAL_MAX }
         ];
         
         function shuffleArray(array) {
@@ -434,7 +434,7 @@
         let surveyData = {};
         let experimentStartTime = null;
         let experimentEndTime = null;
-        let windowsSpawnedThisQuestion = 0;
+        let windowsOnScreen = 0;
         
         let dragState = {
             isDragging: false,
@@ -553,7 +553,9 @@
         }
 
         function clearAllDistractions() {
-            document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
+            const modals = document.querySelectorAll('.distraction-modal');
+            windowsOnScreen -= modals.length;
+            modals.forEach(m => m.remove());
         }
 
         // 🔥 FIXED: Get safe spawn position (doesn't cover input/problem)
@@ -562,36 +564,29 @@
             const modalHeight = 150;
             const padding = 30;
             
-            // Get position of input and problem elements
             const inputRect = els.input.getBoundingClientRect();
             const problemRect = els.problem.getBoundingClientRect();
             
-            // Define safe zone (avoid center-bottom where input is)
             const safeZones = [
-                // Top-left
                 { x: padding, y: padding, maxX: window.innerWidth / 2 - modalWidth, maxY: problemRect.bottom + padding },
-                // Top-right
                 { x: window.innerWidth / 2 + modalWidth, y: padding, maxX: window.innerWidth - modalWidth - padding, maxY: problemRect.bottom + padding },
-                // Right side
                 { x: window.innerWidth - modalWidth - padding, y: problemRect.bottom + padding, maxX: window.innerWidth - modalWidth - padding, maxY: window.innerHeight - modalHeight - padding },
-                // Left side
                 { x: padding, y: problemRect.bottom + padding, maxX: window.innerWidth / 2 - modalWidth, maxY: window.innerHeight - modalHeight - padding }
             ];
             
-            // Pick random safe zone
             const zone = safeZones[getRandomInt(0, safeZones.length - 1)];
-            
             const randomX = getRandomInt(zone.x, Math.max(zone.x, zone.maxX));
             const randomY = getRandomInt(zone.y, Math.max(zone.y, zone.maxY));
             
             return { x: randomX, y: randomY };
         }
 
-        // 🔥 FIXED: Spawn window with guaranteed respawn
+        // 🔥 FIXED: Spawn window, track windowsOnScreen, respawn on close
         function spawnWindow(message = null) {
-            if (windowsSpawnedThisQuestion >= MAX_WINDOWS_PER_QUESTION) return false;
+            // 🔥 Check if we're at max windows on screen
+            if (windowsOnScreen >= MAX_WINDOWS_ON_SCREEN) return false;
             
-            windowsSpawnedThisQuestion++;
+            windowsOnScreen++;
             
             const modal = document.createElement('div');
             modal.className = 'distraction-modal';
@@ -601,7 +596,6 @@
                 <button class="btn modal-btn">Закрыть</button>
             `;
             
-            // 🔥 FIXED: Get safe position
             const pos = getSafeSpawnPosition();
             modal.style.left = pos.x + 'px';
             modal.style.top = pos.y + 'px';
@@ -609,9 +603,10 @@
             // 🔥 FIXED: Close button with guaranteed respawn
             modal.querySelector('.modal-btn').onclick = () => {
                 modal.remove();
+                windowsOnScreen--;
                 
                 // 🔥 FIXED: Guaranteed respawn if under limit
-                if (windowsSpawnedThisQuestion < MAX_WINDOWS_PER_QUESTION) {
+                if (windowsOnScreen < MAX_WINDOWS_ON_SCREEN) {
                     setTimeout(() => {
                         if (!screens.task.classList.contains('hidden')) {
                             spawnWindow();
@@ -648,7 +643,7 @@
         }
 
         function loadQuestion() {
-            windowsSpawnedThisQuestion = 0;
+            windowsOnScreen = 0;
             
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
@@ -683,7 +678,7 @@
             processDistractionQueue();
         }
 
-        // 🔥 FIXED: Only spawn first window from queue, rest from respawn
+        // 🔥 FIXED: Queue keeps trying to spawn, respects windowsOnScreen limit
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
             
@@ -691,13 +686,11 @@
             
             nextDistractionTimer = setTimeout(() => {
                 if (!screens.task.classList.contains('hidden')) {
-                    // 🔥 FIXED: Only spawn first window from queue
-                    if (windowsSpawnedThisQuestion === 0) {
-                        spawnWindow(nextDistraction.message);
-                    }
-                    // 🔥 FIXED: Continue queue to schedule respawn trigger
-                    processDistractionQueue();
+                    // 🔥 Try to spawn, will fail if at max windows
+                    spawnWindow(nextDistraction.message);
                 }
+                // 🔥 Continue queue regardless
+                processDistractionQueue();
             }, nextDistraction.delay);
         }
 
@@ -719,8 +712,7 @@
                 correctAnswer: currentProblem.answer,
                 isCorrect: userVal === currentProblem.answer,
                 timeMs: reactionTime,
-                timestamp: new Date().toISOString(),
-                windowsSpawned: windowsSpawnedThisQuestion
+                timestamp: new Date().toISOString()
             });
 
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
