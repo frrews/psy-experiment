@@ -28,6 +28,7 @@
             overflow: hidden;
             padding: 10px;
             box-sizing: border-box;
+            user-select: none; /* Prevent text selection while dragging */
         }
 
         .container {
@@ -94,8 +95,8 @@
 
         .hidden { display: none !important; }
 
-        /* --- Distraction Modal (Non-blocking) --- */
-        #distraction-modal {
+        /* --- Distraction Modal (Draggable & Non-blocking) --- */
+        .distraction-modal {
             position: fixed;
             width: 200px;
             max-width: 80vw;
@@ -110,6 +111,12 @@
             align-items: center;
             text-align: center;
             animation: popIn 0.2s ease-out;
+            cursor: grab;
+            touch-action: none; /* Critical for drag on mobile */
+        }
+
+        .distraction-modal:active {
+            cursor: grabbing;
         }
 
         @keyframes popIn {
@@ -117,20 +124,22 @@
             to { transform: scale(1); opacity: 1; }
         }
 
-        #distraction-modal h3 {
+        .distraction-modal h3 {
             margin: 0 0 10px 0;
             font-size: 0.9rem;
             color: var(--error);
             text-transform: uppercase;
             letter-spacing: 1px;
+            pointer-events: none; /* Let clicks pass to modal for dragging */
         }
 
-        #distraction-modal p {
+        .distraction-modal p {
             margin: 0 0 15px 0;
             font-size: 0.85rem;
             color: #4b5563;
             font-style: italic;
             line-height: 1.3;
+            pointer-events: none;
         }
 
         .modal-btn {
@@ -140,6 +149,8 @@
             width: auto;
             margin: 0;
             min-height: 44px;
+            pointer-events: auto; /* Button must be clickable */
+            cursor: pointer;
         }
 
         /* Progress Bar */
@@ -251,7 +262,7 @@
             .problem { font-size: 2rem; }
             h1 { font-size: 1.2rem; }
             input[type="text"] { font-size: 1.3rem; }
-            #distraction-modal {
+            .distraction-modal {
                 max-width: 85vw;
                 width: auto;
             }
@@ -279,7 +290,7 @@
                 Вам предстоит решить 30 арифметических примеров в три этапа по 10 задач.<br><br>
                 • Отвечайте <strong>быстро и точно</strong>.<br>
                 • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
-                • Вы можете закрывать их или игнорировать — продолжайте решать примеры.<br>
+                • Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать примеры.<br>
                 • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
                 <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
             </div>
@@ -358,13 +369,6 @@
         </div>
     </div>
 
-    <!-- Distraction Modal (Non-blocking) -->
-    <div id="distraction-modal" class="hidden">
-        <h3>Внимание!</h3>
-        <p id="distraction-text">Текст сообщения</p>
-        <button class="btn modal-btn" onclick="closeDistraction()">Закрыть</button>
-    </div>
-
     <!-- Block Transition Modal -->
     <div id="block-transition-modal" class="hidden">
         <div class="modal-content">
@@ -403,7 +407,7 @@
 
         const BLOCK_DESCRIPTIONS = {
             'A': { title: 'Этап 1: Контроль', desc: 'Решите 10 арифметических примеров в спокойной обстановке. Отвечайте точно и быстро.' },
-            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе могут появляться всплывающие окна. Вы можете закрывать их или игнорировать — продолжайте решать.' },
+            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе могут появляться всплывающие окна. Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать.' },
             'C': { title: 'Этап 3: Восстановление', desc: 'Решите 10 примеров в спокойной обстановке. Помех больше не будет.' }
         };
 
@@ -436,14 +440,22 @@
         let currentQuestionIndex = 0;
         let currentProblem = {};
         let startTime = 0;
-        let blockStartTime = 0; // For intensity calculation
         let distractionQueue = [];
-        let isDistractionActive = false;
         let nextDistractionTimer = null;
         let results = { A: [], B: [], C: [] };
         let surveyData = {};
         let experimentStartTime = null;
         let experimentEndTime = null;
+        
+        // Drag state
+        let dragState = {
+            isDragging: false,
+            modal: null,
+            offsetX: 0,
+            offsetY: 0,
+            startX: 0,
+            startY: 0
+        };
 
         // --- DOM Elements ---
         const screens = {
@@ -456,8 +468,6 @@
             problem: document.getElementById('problem-display'),
             input: document.getElementById('answer-input'),
             progress: document.getElementById('progress-text'),
-            modal: document.getElementById('distraction-modal'),
-            modalText: document.getElementById('distraction-text'),
             toast: document.getElementById('toast'),
             transitionModal: document.getElementById('block-transition-modal'),
             transitionTitle: document.getElementById('transition-title'),
@@ -503,6 +513,71 @@
             els.toast.classList.remove('show');
         }
 
+        // --- Draggable Modal Logic ---
+        
+        function makeDraggable(modal) {
+            // Mouse events
+            modal.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('mouseup', dragEnd);
+            
+            // Touch events
+            modal.addEventListener('touchstart', dragStart, { passive: false });
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('touchend', dragEnd);
+        }
+
+        function dragStart(e) {
+            // Prevent drag if clicking the close button
+            if (e.target.classList.contains('modal-btn')) return;
+            
+            e.preventDefault();
+            
+            const modal = e.currentTarget;
+            const rect = modal.getBoundingClientRect();
+            
+            // Get client coordinates
+            const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+            
+            dragState.isDragging = true;
+            dragState.modal = modal;
+            dragState.offsetX = clientX - rect.left;
+            dragState.offsetY = clientY - rect.top;
+            
+            // Bring to front
+            modal.style.zIndex = '2001';
+        }
+
+        function dragMove(e) {
+            if (!dragState.isDragging || !dragState.modal) return;
+            e.preventDefault();
+            
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            
+            let newX = clientX - dragState.offsetX;
+            let newY = clientY - dragState.offsetY;
+            
+            // Constrain to viewport
+            const modalRect = dragState.modal.getBoundingClientRect();
+            const padding = 10;
+            
+            newX = Math.max(padding, Math.min(newX, window.innerWidth - modalRect.width - padding));
+            newY = Math.max(padding, Math.min(newY, window.innerHeight - modalRect.height - padding));
+            
+            dragState.modal.style.left = newX + 'px';
+            dragState.modal.style.top = newY + 'px';
+        }
+
+        function dragEnd() {
+            if (dragState.modal) {
+                dragState.modal.style.zIndex = '2000';
+            }
+            dragState.isDragging = false;
+            dragState.modal = null;
+        }
+
         // --- Core Logic ---
 
         function startExperiment() {
@@ -529,8 +604,6 @@
         function loadQuestion() {
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
-            isDistractionActive = false;
-            els.modal.classList.add('hidden');
 
             showScreen('task');
             currentProblem = generateProblem();
@@ -540,7 +613,7 @@
             
             startTime = Date.now();
             if (currentQuestionIndex === 0) {
-                blockStartTime = Date.now(); // Start timing block
+                // blockStartTime is not used in new formula, kept for compatibility
             }
             els.input.focus();
 
@@ -567,29 +640,29 @@
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
             
-            const nextDistraction = distractionQueue[0];
+            const nextDistraction = distractionQueue.shift(); // Remove from queue immediately
             
             nextDistractionTimer = setTimeout(() => {
-                if (!screens.task.classList.contains('hidden') && !isDistractionActive) {
+                // Always trigger if we are still on the task screen
+                if (!screens.task.classList.contains('hidden')) {
                     triggerDistraction(nextDistraction.message);
-                } else if (!screens.task.classList.contains('hidden') && isDistractionActive) {
-                    nextDistractionTimer = setTimeout(() => {
-                        if (!screens.task.classList.contains('hidden') && !isDistractionActive) {
-                            triggerDistraction(nextDistraction.message);
-                        }
-                    }, 2000);
                 }
+                // Continue processing the rest of the queue regardless
+                processDistractionQueue();
             }, nextDistraction.delay);
         }
 
         function triggerDistraction(message) {
-            isDistractionActive = true;
-            els.modalText.textContent = message;
+            // Create NEW modal element (non-blocking, independent)
+            const modal = document.createElement('div');
+            modal.className = 'distraction-modal';
+            modal.innerHTML = `
+                <h3>Внимание!</h3>
+                <p>${message}</p>
+                <button class="btn modal-btn">Закрыть</button>
+            `;
             
-            // 🔓 NON-BLOCKING: No blur, no input disable
-            // User can continue typing or choose to close the modal
-            
-            // Position in safe zone
+            // Position in safe zone with slight randomization
             const modalWidth = 220;
             const modalHeight = 150;
             const padding = 30;
@@ -601,23 +674,22 @@
             const randomX = getRandomInt(padding, maxX);
             const randomY = getRandomInt(padding, safeMaxY);
             
-            els.modal.style.left = randomX + 'px';
-            els.modal.style.top = randomY + 'px';
+            modal.style.left = randomX + 'px';
+            modal.style.top = randomY + 'px';
             
-            els.modal.classList.remove('hidden');
-        }
-
-        function closeDistraction() {
-            els.modal.classList.add('hidden');
-            isDistractionActive = false;
+            // Add close button handler
+            modal.querySelector('.modal-btn').onclick = () => {
+                modal.remove();
+            };
             
-            distractionQueue.shift();
-            processDistractionQueue();
-            // Don't force focus - user might be typing
+            // Make draggable
+            makeDraggable(modal);
+            
+            // Add to body
+            document.body.appendChild(modal);
         }
 
         function submitAnswer() {
-            // Allow submission even if distraction is active (non-blocking mode)
             const userVal = parseInt(els.input.value);
             
             if (isNaN(userVal) || els.input.value.trim() === '') {
@@ -738,9 +810,9 @@
                 fullData: JSON.stringify(results)
             };
 
-            fetch(scriptURL, { method: 'POST', body: new URLSearchParams(payload) })
-                .then(response => {
-                    console.log('Данные успешно отправлены!', response);
+            fetch(scriptURL, { method: 'POST', body: new URLSearchParams(payload), mode: 'no-cors' })
+                .then(() => {
+                    console.log('Данные успешно отправлены!');
                     els.saveStatus.textContent = '✅ Данные сохранены! Теперь можно закрыть окно.';
                     els.saveStatus.style.color = '#10b981';
                 })
@@ -760,8 +832,9 @@
         });
 
         document.addEventListener('keydown', function(e) {
-            if (e.key === "Escape" && !els.modal.classList.contains('hidden')) {
-                e.preventDefault();
+            if (e.key === "Escape") {
+                // Close all distraction modals on Escape (optional)
+                document.querySelectorAll('.distraction-modal').forEach(m => m.remove());
             }
         });
 
