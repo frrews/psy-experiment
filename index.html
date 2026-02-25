@@ -272,25 +272,27 @@
     </div>
 
     <div class="container" id="app">
- <!-- Start Screen with Instructions -->
-<div id="start-screen">
-    <h1>Тест на концентрацию внимания</h1>
-    
-    <!-- 🔥 Добавлен скролл для маленьких экранов -->
-    <div style="text-align: left; font-size: 0.9rem; color: #4b5563; margin: 1.5rem 0; line-height: 1.6; background: #f9fafb; padding: 1rem; border-radius: 8px; max-height: 50vh; overflow-y: auto;">
-        <strong>Инструкция:</strong><br><br>
-        Вам предстоит решить 30 арифметических примеров в три этапа по 10 задач.<br><br>
-        • Отвечайте <strong>быстро и точно</strong>.<br>
-        • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
-        • Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать примеры.<br>
-        • <strong>Важно:</strong> на экране может быть до 5 окон одновременно. При закрытии появится новое.<br>
-        • При переходе к новому примеру все окна исчезнут.<br>
-        • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
-        <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
-    </div>
-    
-    <button class="btn" onclick="startExperiment()">Начать тест</button>
-</div>
+        <!-- Start Screen with Instructions -->
+        <div id="start-screen">
+            <h1>Тест на концентрацию внимания</h1>
+            
+            <!-- 🔥 Скролл для маленьких экранов -->
+            <div style="text-align: left; font-size: 0.9rem; color: #4b5563; margin: 1.5rem 0; line-height: 1.6; background: #f9fafb; padding: 1rem; border-radius: 8px; max-height: 50vh; overflow-y: auto;">
+                <strong>Инструкция:</strong><br><br>
+                Вам предстоит решить 30 арифметических примеров в три этапа по 10 задач.<br><br>
+                • Отвечайте <strong>быстро и точно</strong>.<br>
+                • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
+                • Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать примеры.<br>
+                • <strong>Важно:</strong> на экране может быть до 10 окон одновременно (на ПК). При закрытии появится новое.<br>
+                • При переходе к новому примеру все окна исчезнут.<br>
+                • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
+                <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
+            </div>
+            
+            <button class="btn" onclick="startExperiment()">Начать тест</button>
+        </div>
+
+        <!-- Task Screen -->
         <div id="task-screen" class="hidden">
             <div class="progress" id="progress-text">Вопрос 1 из 10</div>
             <div class="problem" id="problem-display">25 + 14</div>
@@ -298,6 +300,7 @@
             <button class="btn" id="submit-btn" onclick="submitAnswer()">Далее</button>
         </div>
 
+        <!-- Survey Screen -->
         <div id="survey-screen" class="hidden">
             <h2>Опрос</h2>
             <p style="font-size: 0.85rem; margin-bottom: 15px; color: #666;">Пожалуйста, ответьте честно. Это важно для анализа.</p>
@@ -317,7 +320,7 @@
                     <div class="survey-options">
                         <label><input type="radio" name="distractionFocus" value="always" required> Читал текст в каждом окне</label>
                         <label><input type="radio" name="distractionFocus" value="sometimes"> Иногда читал, иногда игнорировал/закрывал</label>
-                        <label><input type="radio" name="distractionFocus" value="never"> Игнорироал, не читая</label>
+                        <label><input type="radio" name="distractionFocus" value="never"> Игнорировал, не читая</label>
                     </div>
                 </div>
 
@@ -351,6 +354,7 @@
             </form>
         </div>
 
+        <!-- Final Screen -->
         <div id="final-screen" class="hidden">
             <h1>Тест завершен</h1>
             <p style="font-size: 1rem; margin: 1rem 0;">🔄 Пожалуйста, подождите...</p>
@@ -359,6 +363,7 @@
         </div>
     </div>
 
+    <!-- Block Transition Modal -->
     <div id="block-transition-modal" class="hidden">
         <div class="modal-content">
             <h2 id="transition-title">Этап 2</h2>
@@ -368,12 +373,19 @@
     </div>
 
     <script>
+        // --- Configuration ---
         const QUESTIONS_PER_BLOCK = 10;
         const TOTAL_BLOCKS = 3;
         const BLOCK_SEQUENCE = ['A', 'B', 'C']; 
-        const MAX_WINDOWS_ON_SCREEN = 5;
-        const RESPAWN_INTERVAL_MIN = 350;
-        const RESPAWN_INTERVAL_MAX = 100;
+
+        // 🔥 РАЗНЫЕ ЛИМИТЫ ДЛЯ ПЛАТФОРМ
+        function getMaxWindows() {
+            return window.innerWidth < 480 ? 5 : 10; 
+        }
+
+        // 🔥 БЫСТРЕЕ ИНТЕРВАЛЫ ДЛЯ ДЕСКТОПА
+        const RESPAWN_INTERVAL_MIN = window.innerWidth < 480 ? 500 : 300;
+        const RESPAWN_INTERVAL_MAX = window.innerWidth < 480 ? 1200 : 800;
 
         const DISTRACTION_MESSAGES = [
             "А побыстрее можешь?",
@@ -398,7 +410,7 @@
 
         const BLOCK_DESCRIPTIONS = {
             'A': { title: 'Этап 1: Контроль', desc: 'Решите 10 арифметических примеров в спокойной обстановке. Отвечайте точно и быстро.' },
-            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе будут появляться всплывающие окна (до 5 одновременно). При закрытии появится новое. Вы можете закрывать их, игнорировать или перетаскивать — продолжайте решать.' },
+            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе будут появляться всплывающие окна. На ПК их будет больше!' },
             'C': { title: 'Этап 3: Восстановление', desc: 'Решите 10 примеров в спокойной обстановке. Помех больше не будет.' }
         };
 
@@ -425,6 +437,7 @@
         
         let currentBlockBDistribution = shuffleArray([...BLOCK_B_DISTRIBUTION]);
 
+        // --- State ---
         let currentBlockIndex = 0;
         let currentQuestionIndex = 0;
         let currentProblem = {};
@@ -435,7 +448,7 @@
         let surveyData = {};
         let experimentStartTime = null;
         let experimentEndTime = null;
-        let windowsOnScreen = 0;
+        let windowsOnScreen = 0; // ✅ ЕДИНОЕ ОБЪЯВЛЕНИЕ
         
         let dragState = {
             isDragging: false,
@@ -444,6 +457,7 @@
             offsetY: 0
         };
 
+        // --- DOM Elements ---
         const screens = {
             start: document.getElementById('start-screen'),
             task: document.getElementById('task-screen'),
@@ -462,6 +476,7 @@
             saveStatus: document.getElementById('save-status')
         };
 
+        // --- Utils ---
         function showScreen(screenName) {
             Object.values(screens).forEach(el => el.classList.add('hidden'));
             screens[screenName].classList.remove('hidden');
@@ -498,6 +513,7 @@
             els.toast.classList.remove('show');
         }
 
+        // --- Draggable Logic ---
         function makeDraggable(modal) {
             modal.addEventListener('mousedown', dragStart);
             document.addEventListener('mousemove', dragMove);
@@ -559,174 +575,116 @@
             modals.forEach(m => m.remove());
         }
 
-// 🔥 MOBILE KEYBOARD FIX: Forced balanced distribution
-function getSafeSpawnPosition() {
-    const modalWidth = 200;
-    const modalHeight = 140;
-    const padding = 15;
-    
-    // 🔥 НА МОБИЛКАХ (< 480px)
-    if (window.innerWidth < 480) {
-        const problemRect = els.problem.getBoundingClientRect();
-        const inputRect = els.input.getBoundingClientRect();
-        const btnRect = els.submitBtn.getBoundingClientRect();
-        
-        // Используем screen.height как базу, но корректируем под реальную высоту окна
-        // Если клавиатура открыта, window.innerHeight будет меньше screen.height
-        const availableHeight = window.innerHeight; 
-        const isKeyboardOpen = availableHeight < window.screen.height * 0.8;
-        
-        // 🔥 Запретная зона: Ввод + Кнопка + небольшой запас
-        // Пример можно перекрывать, ввод и кнопку - нельзя!
-        const forbiddenTop = inputRect.top - 20;   // Граница сверху (чуть выше ввода)
-        const forbiddenBottom = isKeyboardOpen ? availableHeight : btnRect.bottom + 20; // Граница снизу
-        
-        const zones = [];
-        
-        // 1. ВЕРХНЯЯ ЗОНА (от верха экрана до ввода)
-        // Должна быть хотя бы 100px высотой, чтобы окно влезло
-        if (forbiddenTop > modalHeight + padding) {
-            zones.push({
-                xMin: padding,
-                xMax: window.innerWidth - modalWidth - padding,
-                yMin: padding,
-                yMax: forbiddenTop - modalHeight - padding,
-                weight: 1 // Обычный вес
-            });
-        }
-        
-        // 2. НИЖНЯЯ ЗОНА (от кнопки/клавиатуры до низа экрана)
-        // Делаем её приоритетной, если есть место
-        const bottomZoneStart = Math.max(btnRect.bottom + 10, isKeyboardOpen ? availableHeight - 10 : btnRect.bottom + 10);
-        const bottomZoneAvailable = availableHeight - bottomZoneStart;
-        
-        if (bottomZoneAvailable > modalHeight + padding) {
-            zones.push({
-                xMin: padding,
-                xMax: window.innerWidth - modalWidth - padding,
-                yMin: bottomZoneStart + padding,
-                yMax: availableHeight - modalHeight - padding,
-                weight: 2 // 🔥 Увеличенный вес! Выбирается в 2 раза чаще
-            });
-        }
-        
-        // 3. ЛЕВАЯ ЗОНА (только если экран достаточно широкий и есть место по бокам)
-        // Проверяем, есть ли хотя бы 60px слева от контента
-        const leftSpace = Math.min(problemRect.left, inputRect.left);
-        if (leftSpace > modalWidth + padding) {
-            zones.push({
-                xMin: padding,
-                xMax: leftSpace - modalWidth - padding,
-                yMin: padding,
-                yMax: availableHeight - modalHeight - padding,
-                weight: 1
-            });
-        }
-        
-        // 4. ПРАВАЯ ЗОНА
-        const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
-        if (rightSpace > modalWidth + padding) {
-            zones.push({
-                xMin: window.innerWidth - rightSpace + padding,
-                xMax: window.innerWidth - modalWidth - padding,
-                yMin: padding,
-                yMax: availableHeight - modalHeight - padding,
-                weight: 1
-            });
-        }
-        
-        // Фоллбэк: если совсем тесно (например, огромная клавиатура), кидаем в самый верх
-        if (zones.length === 0) {
-            return {
-                x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding,
-                y: padding
-            };
-        }
-        
-        // 🔥 ВЫБОР ЗОНЫ С УЧЕТОМ ВЕСА
-        // Создаем массив, где зоны с большим весом встречаются чаще
-        const weightedZones = [];
-        zones.forEach(zone => {
-            for (let i = 0; i < zone.weight; i++) {
-                weightedZones.push(zone);
+        // --- Positioning Logic ---
+        function getSafeSpawnPosition() {
+            const modalWidth = 200;
+            const modalHeight = 140;
+            const padding = 10;
+            
+            if (window.innerWidth < 480) {
+                // MOBILE
+                const problemRect = els.problem.getBoundingClientRect();
+                const inputRect = els.input.getBoundingClientRect();
+                const btnRect = els.submitBtn.getBoundingClientRect();
+                
+                const availableHeight = window.innerHeight;
+                const isKeyboardOpen = availableHeight < window.screen.height * 0.8;
+                
+                const forbiddenTop = inputRect.top - 15;   
+                const forbiddenBottom = isKeyboardOpen ? availableHeight : btnRect.bottom + 15; 
+                
+                const zones = [];
+                
+                if (forbiddenTop > modalHeight + padding) {
+                    zones.push({
+                        xMin: padding, xMax: window.innerWidth - modalWidth - padding,
+                        yMin: padding, yMax: forbiddenTop - modalHeight - padding, weight: 1
+                    });
+                }
+                
+                const bottomZoneStart = Math.max(btnRect.bottom + 5, isKeyboardOpen ? availableHeight - 10 : btnRect.bottom + 5);
+                const bottomZoneAvailable = availableHeight - bottomZoneStart;
+                
+                if (bottomZoneAvailable > modalHeight + padding) {
+                    zones.push({
+                        xMin: padding, xMax: window.innerWidth - modalWidth - padding,
+                        yMin: bottomZoneStart + padding, yMax: availableHeight - modalHeight - padding, weight: 2
+                    });
+                }
+                
+                const leftSpace = Math.min(problemRect.left, inputRect.left);
+                if (leftSpace > modalWidth + 5) {
+                    zones.push({
+                        xMin: padding, xMax: leftSpace - modalWidth - 5,
+                        yMin: padding, yMax: availableHeight - modalHeight - padding, weight: 1
+                    });
+                }
+                
+                const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
+                if (rightSpace > modalWidth + 5) {
+                    zones.push({
+                        xMin: window.innerWidth - rightSpace + 5, xMax: window.innerWidth - modalWidth - padding,
+                        yMin: padding, yMax: availableHeight - modalHeight - padding, weight: 1
+                    });
+                }
+                
+                if (zones.length === 0) {
+                    return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
+                }
+                
+                const weightedZones = [];
+                zones.forEach(zone => { for (let i = 0; i < zone.weight; i++) weightedZones.push(zone); });
+                const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
+                return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
+            } else {
+                // DESKTOP
+                const problemRect = els.problem.getBoundingClientRect();
+                const inputRect = els.input.getBoundingClientRect();
+                const btnRect = els.submitBtn.getBoundingClientRect();
+                
+                const forbidden = {
+                    top: Math.min(problemRect.top, inputRect.top) - 20,
+                    bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
+                    left: Math.min(problemRect.left, inputRect.left) - 20,
+                    right: Math.max(problemRect.right, inputRect.right) + 20
+                };
+                
+                const zones = [];
+                
+                if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
+                    zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: padding, yMax: forbidden.top - modalHeight - padding });
+                }
+                if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
+                    zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: padding, yMax: forbidden.top - modalHeight - padding });
+                }
+                if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+                    zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
+                }
+                if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+                    zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
+                }
+                
+                if (window.innerWidth > 600) {
+                     if (problemRect.top > modalHeight + 10) {
+                         zones.push({ xMin: problemRect.left, xMax: problemRect.right - modalWidth, yMin: 10, yMax: problemRect.top - modalHeight - 10, weight: 1.5 });
+                     }
+                     if (window.innerHeight - btnRect.bottom > modalHeight + 10) {
+                         zones.push({ xMin: btnRect.left, xMax: btnRect.right - modalWidth, yMin: btnRect.bottom + 10, yMax: window.innerHeight - modalHeight - 10, weight: 1.5 });
+                     }
+                }
+
+                if (zones.length === 0) {
+                    return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
+                }
+                
+                const zone = zones[getRandomInt(0, zones.length - 1)];
+                return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
             }
-        });
-        
-        const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
-        const randomX = getRandomInt(zone.xMin, zone.xMax);
-        const randomY = getRandomInt(zone.yMin, zone.yMax);
-        
-        return { x: randomX, y: randomY };
-    }
-    
-    // 🔥 НА ДЕСКТОПЕ (>= 480px) — оригинальная логика
-    const problemRect = els.problem.getBoundingClientRect();
-    const inputRect = els.input.getBoundingClientRect();
-    const btnRect = els.submitBtn.getBoundingClientRect();
-    
-    const forbidden = {
-        top: Math.min(problemRect.top, inputRect.top) - 30,
-        bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
-        left: Math.min(problemRect.left, inputRect.left) - 20,
-        right: Math.max(problemRect.right, inputRect.right) + 20
-    };
-    
-    const zones = [];
-    
-    // 1. Верхний левый
-    if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
-        zones.push({
-            xMin: padding,
-            xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2),
-            yMin: padding,
-            yMax: forbidden.top - modalHeight - padding
-        });
-    }
-    // 2. Верхний правый
-    if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
-        zones.push({
-            xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
-            xMax: window.innerWidth - modalWidth - padding,
-            yMin: padding,
-            yMax: forbidden.top - modalHeight - padding
-        });
-    }
-    // 3. Нижний левый
-    if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
-        zones.push({
-            xMin: padding,
-            xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2),
-            yMin: forbidden.bottom + padding,
-            yMax: window.innerHeight - modalHeight - padding
-        });
-    }
-    // 4. Нижний правый
-    if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
-        zones.push({
-            xMin: Math.max(forbidden.right + padding, window.innerWidth / 2),
-            xMax: window.innerWidth - modalWidth - padding,
-            yMin: forbidden.bottom + padding,
-            yMax: window.innerHeight - modalHeight - padding
-        });
-    }
-    
-    if (zones.length === 0) {
-        return {
-            x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding,
-            y: padding
-        };
-    }
-    
-    const zone = zones[getRandomInt(0, zones.length - 1)];
-    const randomX = getRandomInt(zone.xMin, zone.xMax);
-    const randomY = getRandomInt(zone.yMin, zone.yMax);
-    
-    return { x: randomX, y: randomY };
-}
-        // 🔥 FIXED: Spawn window, track windowsOnScreen, respawn on close
+        }
+
         function spawnWindow(message = null) {
-            // 🔥 Check if we're at max windows on screen
-            if (windowsOnScreen >= MAX_WINDOWS_ON_SCREEN) return false;
+            const maxWindows = getMaxWindows();
+            if (windowsOnScreen >= maxWindows) return false;
             
             windowsOnScreen++;
             
@@ -742,27 +700,22 @@ function getSafeSpawnPosition() {
             modal.style.left = pos.x + 'px';
             modal.style.top = pos.y + 'px';
             
-            // 🔥 FIXED: Close button with guaranteed respawn
             modal.querySelector('.modal-btn').onclick = () => {
                 modal.remove();
                 windowsOnScreen--;
-                
-                // 🔥 FIXED: Guaranteed respawn if under limit
-                if (windowsOnScreen < MAX_WINDOWS_ON_SCREEN) {
+                if (windowsOnScreen < getMaxWindows()) {
                     setTimeout(() => {
-                        if (!screens.task.classList.contains('hidden')) {
-                            spawnWindow();
-                        }
+                        if (!screens.task.classList.contains('hidden')) spawnWindow();
                     }, getRandomInt(RESPAWN_INTERVAL_MIN, RESPAWN_INTERVAL_MAX));
                 }
             };
             
             makeDraggable(modal);
             document.body.appendChild(modal);
-            
             return true;
         }
 
+        // --- Core Logic ---
         function startExperiment() {
             experimentStartTime = new Date().toISOString();
             currentBlockIndex = 0;
@@ -786,7 +739,6 @@ function getSafeSpawnPosition() {
 
         function loadQuestion() {
             windowsOnScreen = 0;
-            
             if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
             distractionQueue = [];
             clearAllDistractions();
@@ -801,15 +753,14 @@ function getSafeSpawnPosition() {
             els.input.focus();
 
             if (BLOCK_SEQUENCE[currentBlockIndex] === 'B') {
-                const distractionConfig = currentBlockBDistribution[currentQuestionIndex];
-                scheduleDistractionsQueue(distractionConfig.count, distractionConfig.minInterval, distractionConfig.maxInterval);
+                const queueCount = window.innerWidth < 480 ? 10 : 20; 
+                scheduleDistractionsQueue(queueCount, RESPAWN_INTERVAL_MIN, RESPAWN_INTERVAL_MAX);
             }
         }
 
         function scheduleDistractionsQueue(count, minInterval, maxInterval) {
             distractionQueue = [];
             let cumulativeDelay = getRandomInt(500, 1500);
-            
             for (let i = 0; i < count; i++) {
                 distractionQueue.push({
                     delay: cumulativeDelay,
@@ -820,25 +771,19 @@ function getSafeSpawnPosition() {
             processDistractionQueue();
         }
 
-        // 🔥 FIXED: Queue keeps trying to spawn, respects windowsOnScreen limit
         function processDistractionQueue() {
             if (distractionQueue.length === 0) return;
-            
             const nextDistraction = distractionQueue.shift();
-            
             nextDistractionTimer = setTimeout(() => {
                 if (!screens.task.classList.contains('hidden')) {
-                    // 🔥 Try to spawn, will fail if at max windows
                     spawnWindow(nextDistraction.message);
                 }
-                // 🔥 Continue queue regardless
                 processDistractionQueue();
             }, nextDistraction.delay);
         }
 
         function submitAnswer() {
             const userVal = parseInt(els.input.value);
-            
             if (isNaN(userVal) || els.input.value.trim() === '') {
                 els.input.focus();
                 return;
@@ -866,7 +811,6 @@ function getSafeSpawnPosition() {
             if (currentQuestionIndex >= QUESTIONS_PER_BLOCK) {
                 currentBlockIndex++;
                 currentQuestionIndex = 0;
-                
                 if (currentBlockIndex >= TOTAL_BLOCKS) {
                     experimentEndTime = new Date().toISOString();
                     showScreen('survey');
@@ -886,7 +830,6 @@ function getSafeSpawnPosition() {
 
         function finishExperiment(e) {
             e.preventDefault();
-            
             const formData = new FormData(e.target);
             surveyData = {
                 effort: formData.get('effort'),
@@ -965,14 +908,3 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
