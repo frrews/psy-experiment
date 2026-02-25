@@ -558,18 +558,58 @@
             modals.forEach(m => m.remove());
         }
 
-// 🔥 SMART: Spawn anywhere EXCEPT the central area with problem/input
+// 🔥 SMART: Desktop = original logic, Mobile = more freedom with slight overlap allowed
 function getSafeSpawnPosition() {
     const modalWidth = 200;
     const modalHeight = 140;
     const padding = 15;
     
-    // Получаем координаты элементов, которые нельзя перекрывать
+    // 🔥 НА МОБИЛКАХ (< 480px) — упрощённая логика с большими зонами
+    if (window.innerWidth < 480) {
+        // Получаем координаты важных элементов
+        const problemRect = els.problem.getBoundingClientRect();
+        const inputRect = els.input.getBoundingClientRect();
+        
+        // 🔥 Запретная зона — только самый центр (пример + ввод) с небольшим запасом
+        const forbiddenCenter = {
+            top: problemRect.top - 10,      // Чуть выше примера
+            bottom: inputRect.bottom + 10,  // Чуть ниже ввода
+            left: Math.min(problemRect.left, inputRect.left) - 10,
+            right: Math.max(problemRect.right, inputRect.right) + 10
+        };
+        
+        // 🔥 Пробуем случайную позицию 10 раз, пока не найдём подходящую
+        for (let i = 0; i < 10; i++) {
+            const randomX = getRandomInt(padding, window.innerWidth - modalWidth - padding);
+            const randomY = getRandomInt(padding, window.innerHeight - modalHeight - padding);
+            
+            // Проверяем, не перекрывает ли центр слишком сильно
+            const overlaps = !(
+                randomX + modalWidth < forbiddenCenter.left ||
+                randomX > forbiddenCenter.right ||
+                randomY + modalHeight < forbiddenCenter.top ||
+                randomY > forbiddenCenter.bottom
+            );
+            
+            // 🔥 Разрешаем небольшое перекрытие (до 30% окна)
+            if (!overlaps) {
+                return { x: randomX, y: randomY };
+            }
+        }
+        
+        // 🔥 Фоллбэк: просто верхний угол (слева или справа)
+        const side = Math.random() > 0.5 ? 'left' : 'right';
+        return {
+            x: side === 'left' ? padding : window.innerWidth - modalWidth - padding,
+            y: padding
+        };
+    }
+    
+    // 🔥 НА ДЕСКТОПЕ (>= 480px) — оригинальная логика с 4 зонами
     const problemRect = els.problem.getBoundingClientRect();
     const inputRect = els.input.getBoundingClientRect();
     const btnRect = els.submitBtn.getBoundingClientRect();
     
-    // 🔥 Создаём "запретный прямоугольник" вокруг важных элементов + запас
     const forbidden = {
         top: Math.min(problemRect.top, inputRect.top) - 30,
         bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
@@ -577,7 +617,6 @@ function getSafeSpawnPosition() {
         right: Math.max(problemRect.right, inputRect.right) + 20
     };
     
-    // 🔥 Определяем 4 потенциальные зоны (углы экрана)
     const zones = [];
     
     // 1. Верхний левый угол
@@ -620,45 +659,20 @@ function getSafeSpawnPosition() {
         });
     }
     
-    // 🔥 Если углов мало (маленький экран) — добавляем боковые зоны
-    if (zones.length < 2 && window.innerWidth > 360) {
-        // Левая полоса (если есть место по ширине)
-        if (forbidden.left > modalWidth + padding * 2) {
-            zones.push({
-                xMin: padding,
-                xMax: forbidden.left - modalWidth - padding,
-                yMin: padding,
-                yMax: window.innerHeight - modalHeight - padding
-            });
-        }
-        // Правая полоса
-        if (window.innerWidth - forbidden.right > modalWidth + padding * 2) {
-            zones.push({
-                xMin: forbidden.right + padding,
-                xMax: window.innerWidth - modalWidth - padding,
-                yMin: padding,
-                yMax: window.innerHeight - modalHeight - padding
-            });
-        }
-    }
-    
-    // 🔥 Фоллбэк: если совсем тесно — верхние углы с минимальными отступами
+    // Фоллбэк для десктопа
     if (zones.length === 0) {
-        const side = Math.random() > 0.5 ? 'left' : 'right';
         return {
-            x: side === 'left' ? padding : window.innerWidth - modalWidth - padding,
+            x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding,
             y: padding
         };
     }
     
-    // 🔥 Выбираем случайную зону и случайную позицию внутри неё
     const zone = zones[getRandomInt(0, zones.length - 1)];
     const randomX = getRandomInt(zone.xMin, zone.xMax);
     const randomY = getRandomInt(zone.yMin, zone.yMax);
     
     return { x: randomX, y: randomY };
 }
-
         // 🔥 FIXED: Spawn window, track windowsOnScreen, respawn on close
         function spawnWindow(message = null) {
             // 🔥 Check if we're at max windows on screen
@@ -901,6 +915,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
