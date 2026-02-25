@@ -51,17 +51,9 @@
             font-size: 2.5rem;
             font-weight: bold;
             margin: 1.5rem 0;
-            transition: filter 0.2s ease, opacity 0.2s ease;
         }
 
-        /* 🔒 Размытие примера во время дистракции */
-        .problem.blurred {
-            filter: blur(8px);
-            opacity: 0.3;
-            user-select: none;
-        }
-
-        input[type="number"], input[type="text"] {
+        input[type="text"] {
             width: 100%;
             padding: 12px;
             font-size: 1.5rem;
@@ -73,13 +65,8 @@
             transition: border-color 0.2s;
         }
 
-        input[type="number"]:focus, input[type="text"]:focus {
+        input[type="text"]:focus {
             border-color: var(--primary);
-        }
-
-        input[type="number"]:disabled, input[type="text"]:disabled {
-            background: #f3f4f6;
-            color: #9ca3af;
         }
 
         input::-webkit-outer-spin-button,
@@ -104,15 +91,10 @@
 
         .btn:hover { opacity: 0.9; }
         .btn:active { transform: scale(0.98); }
-        .btn:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
 
         .hidden { display: none !important; }
 
-        /* --- Distraction Modal (Mobile-Friendly) --- */
+        /* --- Distraction Modal (Non-blocking) --- */
         #distraction-modal {
             position: fixed;
             width: 200px;
@@ -200,27 +182,28 @@
         /* --- Survey Styles --- */
         .survey-question {
             text-align: left;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
         }
         .survey-question label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
         .survey-options label {
             display: block;
             font-weight: normal;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             cursor: pointer;
-            padding: 8px;
+            padding: 6px;
             border-radius: 4px;
             background: #f9fafb;
+            font-size: 0.85rem;
         }
         .survey-options input {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
         }
 
         /* --- Block Transition Modal --- */
@@ -262,25 +245,12 @@
             background: var(--primary);
         }
 
-        /* --- Input Blocker Overlay --- */
-        #input-blocker {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: transparent;
-            z-index: 1999;
-            pointer-events: none;
-        }
-
-        #input-blocker.active {
-            pointer-events: auto;
-        }
-
         /* --- Mobile Specific Adjustments --- */
         @media (max-width: 380px) {
             .container { padding: 1rem; }
             .problem { font-size: 2rem; }
             h1 { font-size: 1.2rem; }
-            input[type="number"], input[type="text"] { font-size: 1.3rem; }
+            input[type="text"] { font-size: 1.3rem; }
             #distraction-modal {
                 max-width: 85vw;
                 width: auto;
@@ -299,16 +269,21 @@
         <div id="toast" class="toast">Уведомление</div>
     </div>
 
-    <!-- Input Blocker Overlay -->
-    <div id="input-blocker"></div>
-
     <div class="container" id="app">
-        <!-- Start Screen -->
+        <!-- Start Screen with Instructions -->
         <div id="start-screen">
-            <h1>Когнитивный тест</h1>
-            <p>Вам предстоит решить 30 примеров.</p>
-            <p>3 этапа по 10 задач.</p>
-            <p style="font-size: 0.85rem; color: #666; margin: 20px 0;">Во втором этапе возможны помехи.</p>
+            <h1>Тест на концентрацию внимания</h1>
+            
+            <div style="text-align: left; font-size: 0.9rem; color: #4b5563; margin: 1.5rem 0; line-height: 1.6; background: #f9fafb; padding: 1rem; border-radius: 8px;">
+                <strong>Инструкция:</strong><br><br>
+                Вам предстоит решить 30 арифметических примеров в три этапа по 10 задач.<br><br>
+                • Отвечайте <strong>быстро и точно</strong>.<br>
+                • Во <strong>втором этапе</strong> могут появляться всплывающие окна — это часть эксперимента.<br>
+                • Вы можете закрывать их или игнорировать — продолжайте решать примеры.<br>
+                • Пожалуйста, отнеситесь серьёзно: не вводите случайные числа и не пропускайте задачи.<br><br>
+                <em>Ваши данные помогут исследовать адаптацию внимания к внешним помехам.</em>
+            </div>
+            
             <button class="btn" onclick="startExperiment()">Начать тест</button>
         </div>
 
@@ -320,47 +295,70 @@
             <button class="btn" id="submit-btn" onclick="submitAnswer()">Далее</button>
         </div>
 
-        <!-- Survey Screen -->
+        <!-- Survey Screen (5 validation questions) -->
         <div id="survey-screen" class="hidden">
             <h2>Опрос</h2>
-            <p style="font-size: 0.85rem; margin-bottom: 20px;">Пожалуйста, ответьте честно. Это важно для анализа.</p>
+            <p style="font-size: 0.85rem; margin-bottom: 15px; color: #666;">Пожалуйста, ответьте честно. Это важно для анализа.</p>
             
             <form id="survey-form" onsubmit="finishExperiment(event)">
                 <div class="survey-question">
-                    <label>1. Как часто вы вчитывались в текст всплывающих окон?</label>
+                    <label>1. Насколько внимательно вы решали примеры?</label>
                     <div class="survey-options">
-                        <label><input type="radio" name="readFreq" value="never" required> Никогда, сразу закрывал</label>
-                        <label><input type="radio" name="readFreq" value="rarely"> Редко (1-2 раза)</label>
-                        <label><input type="radio" name="readFreq" value="often"> Часто (большинство окон)</label>
-                        <label><input type="radio" name="readFreq" value="always"> Всегда, читал всё</label>
+                        <label><input type="radio" name="effort" value="high" required> Старался решать точно</label>
+                        <label><input type="radio" name="effort" value="medium"> Решал как получится</label>
+                        <label><input type="radio" name="effort" value="low"> Вводил числа наугад</label>
                     </div>
                 </div>
 
                 <div class="survey-question">
-                    <label>2. Насколько сильно вас отвлекали эти окна? (1 - не отвлекали, 5 - очень сильно)</label>
+                    <label>2. Как часто вы отвлекались на всплывающие окна?</label>
                     <div class="survey-options">
-                        <label><input type="radio" name="distractionLevel" value="1" required> 1 - Игнорировал легко</label>
-                        <label><input type="radio" name="distractionLevel" value="2"> 2</label>
-                        <label><input type="radio" name="distractionLevel" value="3"> 3 - Средне</label>
-                        <label><input type="radio" name="distractionLevel" value="4"> 4</label>
-                        <label><input type="radio" name="distractionLevel" value="5"> 5 - Сильно сбивали с мысли</label>
+                        <label><input type="radio" name="distractionFocus" value="always" required> Читал текст в каждом окне</label>
+                        <label><input type="radio" name="distractionFocus" value="sometimes"> Иногда читал, иногда закрывал сразу</label>
+                        <label><input type="radio" name="distractionFocus" value="never"> Закрывал сразу, не читая</label>
                     </div>
                 </div>
 
-                <button type="submit" class="btn">Завершить и показать результаты</button>
+                <div class="survey-question">
+                    <label>3. Были ли моменты, когда вы устали и хотели закончить?</label>
+                    <div class="survey-options">
+                        <label><input type="radio" name="fatigue" value="yes" required> Да, во втором или третьем этапе</label>
+                        <label><input type="radio" name="fatigue" value="no"> Нет, справился легко</label>
+                    </div>
+                </div>
+
+                <div class="survey-question">
+                    <label>4. Проверяли ли вы свои ответы перед нажатием «Далее»?</label>
+                    <div class="survey-options">
+                        <label><input type="radio" name="checking" value="always" required> Да, почти всегда</label>
+                        <label><input type="radio" name="checking" value="sometimes"> Иногда</label>
+                        <label><input type="radio" name="checking" value="never"> Нет, отправлял сразу</label>
+                    </div>
+                </div>
+
+                <div class="survey-question">
+                    <label>5. Насколько сложным показался второй этап (с окнами)?</label>
+                    <div class="survey-options">
+                        <label><input type="radio" name="difficulty" value="easy" required> Легче, чем ожидал</label>
+                        <label><input type="radio" name="difficulty" value="medium"> Как и ожидал</label>
+                        <label><input type="radio" name="difficulty" value="hard"> Сложнее, чем ожидал</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn">Завершить тест</button>
             </form>
         </div>
 
-        <!-- Final Screen -->
+        <!-- Final Screen with Wait Message -->
         <div id="final-screen" class="hidden">
             <h1>Тест завершен</h1>
-            <p>Спасибо за участие!</p>
-            <p>ДПодождите всплывающего окна о сохранении результатов.</p>
-            <button class="btn" onclick="location.reload()">Заново</button>
+            <p style="font-size: 1rem; margin: 1rem 0;">🔄 Пожалуйста, подождите...</p>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 1.5rem;">Ваши ответы сохраняются. Не закрывайте окно, пока не появится сообщение об успешном сохранении.</p>
+            <div id="save-status" style="font-size: 0.9rem; color: var(--primary); font-weight: bold;"></div>
         </div>
     </div>
 
-    <!-- Distraction Modal -->
+    <!-- Distraction Modal (Non-blocking) -->
     <div id="distraction-modal" class="hidden">
         <h3>Внимание!</h3>
         <p id="distraction-text">Текст сообщения</p>
@@ -405,7 +403,7 @@
 
         const BLOCK_DESCRIPTIONS = {
             'A': { title: 'Этап 1: Контроль', desc: 'Решите 10 арифметических примеров в спокойной обстановке. Отвечайте точно и быстро.' },
-            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе будут появляться всплывающие окна. Закрывайте их и продолжайте решать задачи.' },
+            'B': { title: 'Этап 2: Стресс / Помехи', desc: 'Решите 10 примеров. В этом этапе могут появляться всплывающие окна. Вы можете закрывать их или игнорировать — продолжайте решать.' },
             'C': { title: 'Этап 3: Восстановление', desc: 'Решите 10 примеров в спокойной обстановке. Помех больше не будет.' }
         };
 
@@ -438,11 +436,14 @@
         let currentQuestionIndex = 0;
         let currentProblem = {};
         let startTime = 0;
+        let blockStartTime = 0; // For intensity calculation
         let distractionQueue = [];
         let isDistractionActive = false;
         let nextDistractionTimer = null;
         let results = { A: [], B: [], C: [] };
         let surveyData = {};
+        let experimentStartTime = null;
+        let experimentEndTime = null;
 
         // --- DOM Elements ---
         const screens = {
@@ -462,7 +463,7 @@
             transitionTitle: document.getElementById('transition-title'),
             transitionDesc: document.getElementById('transition-description'),
             submitBtn: document.getElementById('submit-btn'),
-            blocker: document.getElementById('input-blocker')
+            saveStatus: document.getElementById('save-status')
         };
 
         // --- Utils ---
@@ -485,7 +486,6 @@
                 b = getRandomInt(10, 99);
                 ans = a + b;
             } else {
-                // Вычитание: гарантируем неотрицательный результат
                 a = getRandomInt(10, 99);
                 b = getRandomInt(10, a);
                 ans = a - b;
@@ -506,6 +506,7 @@
         // --- Core Logic ---
 
         function startExperiment() {
+            experimentStartTime = new Date().toISOString();
             currentBlockIndex = 0;
             currentQuestionIndex = 0;
             currentBlockBDistribution = shuffleArray([...BLOCK_B_DISTRIBUTION]);
@@ -530,12 +531,6 @@
             distractionQueue = [];
             isDistractionActive = false;
             els.modal.classList.add('hidden');
-            
-            // 🔓 Гарантируем разблокировку
-            els.blocker.classList.remove('active');
-            els.input.disabled = false;
-            els.submitBtn.disabled = false;
-            els.problem.classList.remove('blurred'); // 🔓 Убираем размытие
 
             showScreen('task');
             currentProblem = generateProblem();
@@ -544,6 +539,9 @@
             els.input.value = '';
             
             startTime = Date.now();
+            if (currentQuestionIndex === 0) {
+                blockStartTime = Date.now(); // Start timing block
+            }
             els.input.focus();
 
             if (BLOCK_SEQUENCE[currentBlockIndex] === 'B') {
@@ -588,13 +586,10 @@
             isDistractionActive = true;
             els.modalText.textContent = message;
             
-            // 🔒 Блокируем ввод + размываем пример
-            els.blocker.classList.add('active');
-            els.input.disabled = true;
-            els.submitBtn.disabled = true;
-            els.problem.classList.add('blurred'); // 🔒 Размытие примера
+            // 🔓 NON-BLOCKING: No blur, no input disable
+            // User can continue typing or choose to close the modal
             
-            // Позиционирование в безопасной зоне (чтобы не нужно было скроллить)
+            // Position in safe zone
             const modalWidth = 220;
             const modalHeight = 150;
             const padding = 30;
@@ -616,24 +611,15 @@
             els.modal.classList.add('hidden');
             isDistractionActive = false;
             
-            // 🔓 Разблокируем ввод + убираем размытие
-            els.blocker.classList.remove('active');
-            els.input.disabled = false;
-            els.submitBtn.disabled = false;
-            els.problem.classList.remove('blurred'); // 🔓 Убираем размытие
-            
             distractionQueue.shift();
             processDistractionQueue();
-            els.input.focus(); 
+            // Don't force focus - user might be typing
         }
 
         function submitAnswer() {
-            // 🔒 Двойная защита от отправки во время дистракции
-            if (isDistractionActive || els.input.disabled) return; 
-
+            // Allow submission even if distraction is active (non-blocking mode)
             const userVal = parseInt(els.input.value);
             
-            // Если поле пустое — не отправляем
             if (isNaN(userVal) || els.input.value.trim() === '') {
                 els.input.focus();
                 return;
@@ -662,6 +648,7 @@
                 currentQuestionIndex = 0;
                 
                 if (currentBlockIndex >= TOTAL_BLOCKS) {
+                    experimentEndTime = new Date().toISOString();
                     showScreen('survey');
                 } else {
                     showBlockTransition();
@@ -671,53 +658,96 @@
             }
         }
 
+        // === NEW FORMULAS FOR ADAPTATION & EXHAUSTION ===
+        function calculateIntensity(blockData) {
+            // E = A / t
+            // A = number of correct answers
+            // t = total time in seconds
+            const correctAnswers = blockData.filter(r => r.isCorrect).length;
+            const totalTimeSec = blockData.reduce((sum, r) => sum + r.timeMs, 0) / 1000;
+            return totalTimeSec > 0 ? correctAnswers / totalTimeSec : 0;
+        }
+
         function finishExperiment(e) {
             e.preventDefault();
             
             const formData = new FormData(e.target);
             surveyData = {
-                readFrequency: formData.get('readFreq'),
-                distractionLevel: formData.get('distractionLevel')
+                effort: formData.get('effort'),
+                distractionFocus: formData.get('distractionFocus'),
+                fatigue: formData.get('fatigue'),
+                checking: formData.get('checking'),
+                difficulty: formData.get('difficulty')
             };
 
             showScreen('final');
             
-            const calcAvg = (arr) => arr.length ? (arr.reduce((a, b) => a + b.timeMs, 0) / arr.length).toFixed(0) : 0;
-            const avgA = parseFloat(calcAvg(results.A));
-            const avgB = parseFloat(calcAvg(results.B));
-            const avgC = parseFloat(calcAvg(results.C));
+            // === CALCULATE NEW METRICS ===
+            // Adaptation: Block B, first half vs second half
+            const blockB_first = results.B.slice(0, 5);
+            const blockB_second = results.B.slice(5, 10);
+            const E1 = calculateIntensity(blockB_first);
+            const E2 = calculateIntensity(blockB_second);
+            const adaptation = E1 > 0 ? ((E1 - E2) / E1).toFixed(3) : 0;
             
-            let adaptation = 0;
-            if (results.B.length >= 10) {
-                const firstHalf = results.B.slice(0, 5).reduce((a,b)=>a+b.timeMs,0)/5;
-                const secondHalf = results.B.slice(5, 10).reduce((a,b)=>a+b.timeMs,0)/5;
-                adaptation = ((firstHalf - secondHalf) / firstHalf * 100).toFixed(1);
-            }
+            // Exhaustion: Block A vs Block C
+            const E3 = calculateIntensity(results.A);
+            const E4 = calculateIntensity(results.C);
+            const exhaustion = E3 > 0 ? ((E3 - E4) / E3).toFixed(3) : 0;
             
-            const exhaustion = ((avgC - avgA) / avgA * 100).toFixed(1);
+            // Additional metrics for Google Sheets
+            const avgTimeA = results.A.length ? (results.A.reduce((s,r)=>s+r.timeMs,0)/results.A.length).toFixed(0) : 0;
+            const avgTimeB = results.B.length ? (results.B.reduce((s,r)=>s+r.timeMs,0)/results.B.length).toFixed(0) : 0;
+            const avgTimeC = results.C.length ? (results.C.reduce((s,r)=>s+r.timeMs,0)/results.C.length).toFixed(0) : 0;
+            const totalErrors = [...results.A, ...results.B, ...results.C].filter(r => !r.isCorrect).length;
 
-            // --- ОТПРАВКА ДАННЫХ В GOOGLE ТАБЛИЦУ ---
+            // --- SEND TO GOOGLE SHEETS ---
             const scriptURL = 'https://script.google.com/macros/s/AKfycbyT0_qTUkJDEDwUFDv737xpMCJyhMeGrWXQUcPOwLMCfc5VkaNns9gKff2WMmCOT2_U/exec';
             
             const payload = {
-                ReadFreq: surveyData.readFrequency,
-                DistractionLevel: surveyData.distractionLevel,
-                AvgTimeA: avgA,
-                AvgTimeB: avgB,
-                AvgTimeC: avgC,
+                // Timestamps
+                StartTime: experimentStartTime,
+                EndTime: experimentEndTime,
+                
+                // Average times per block (ms)
+                AvgTimeA: avgTimeA,
+                AvgTimeB: avgTimeB,
+                AvgTimeC: avgTimeC,
+                
+                // Intensity metrics
+                E1: E1.toFixed(3),
+                E2: E2.toFixed(3),
+                E3: E3.toFixed(3),
+                E4: E4.toFixed(3),
+                
+                // Derived metrics
                 Adaptation: adaptation,
                 Exhaustion: exhaustion,
+                
+                // Quality control
+                TotalErrors: totalErrors,
+                
+                // Survey validation answers
+                Effort: surveyData.effort,
+                DistractionFocus: surveyData.distractionFocus,
+                Fatigue: surveyData.fatigue,
+                Checking: surveyData.checking,
+                Difficulty: surveyData.difficulty,
+                
+                // Full raw data for deep analysis
                 fullData: JSON.stringify(results)
             };
 
             fetch(scriptURL, { method: 'POST', body: new URLSearchParams(payload) })
                 .then(response => {
                     console.log('Данные успешно отправлены!', response);
-                    alert("Спасибо! Ваши данные сохранены.");
+                    els.saveStatus.textContent = '✅ Данные сохранены! Теперь можно закрыть окно.';
+                    els.saveStatus.style.color = '#10b981';
                 })
                 .catch(error => {
                     console.error('Ошибка отправки:', error);
-                    alert("Данные сохранены локально, но не отправились на сервер.");
+                    els.saveStatus.textContent = '⚠️ Не удалось отправить данные. Пожалуйста, сделайте скриншот этой страницы.';
+                    els.saveStatus.style.color = '#ef4444';
                 });
 
             console.log("=== LOCAL COPY ===");
@@ -738,4 +768,3 @@
     </script>
 </body>
 </html>
-
