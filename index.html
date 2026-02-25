@@ -760,7 +760,7 @@
             const blockB_second = results.B.slice(5, 10);
             const E1 = calculateIntensity(blockB_first);
             const E2 = calculateIntensity(blockB_second);
-            const adaptation = E1 > 0 ? ((E1 - E2) / E1).toFixed(3) : 0;
+            const adaptation = E1 > 0 ? ((E2 - E1) / E1).toFixed(3) : 0;
             
             const E3 = calculateIntensity(results.A);
             const E4 = calculateIntensity(results.C);
@@ -823,3 +823,4 @@
     </script>
 </body>
 </html>
+
