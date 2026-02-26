@@ -792,26 +792,36 @@ function getSafeSpawnPosition() {
             loadQuestion();
         }
 
-        function loadQuestion() {
-            windowsOnScreen = 0;
-            if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
-            distractionQueue = [];
-            clearAllDistractions();
+function loadQuestion() {
+    windowsOnScreen = 0;
+    
+    if (nextDistractionTimer) clearTimeout(nextDistractionTimer);
+    distractionQueue = [];
+    clearAllDistractions();
 
-            showScreen('task');
-            currentProblem = generateProblem();
-            els.problem.textContent = currentProblem.text;
-            els.progress.textContent = `Этап ${BLOCK_SEQUENCE[currentBlockIndex]}: Задача ${currentQuestionIndex + 1}/${QUESTIONS_PER_BLOCK}`;
-            els.input.value = '';
-            
-            startTime = Date.now();
-            els.input.focus();
+    showScreen('task');
+    currentProblem = generateProblem();
+    els.problem.textContent = currentProblem.text;
+    els.progress.textContent = `Этап ${BLOCK_SEQUENCE[currentBlockIndex]}: Задача ${currentQuestionIndex + 1}/${QUESTIONS_PER_BLOCK}`;
+    els.input.value = '';
+    
+    startTime = Date.now();
+    
+    // 🔥 ГЛАВНОЕ ИЗМЕНЕНИЕ: Принудительно скрываем клавиатуру при старте вопроса
+    els.input.blur(); 
+    
+    // Фокус ставим только если это десктоп (там клавиатура не мешает)
+    // Или можно вообще убрать фокус, чтобы пользователь сам кликнул, когда будет готов
+    if (window.innerWidth >= 480) {
+        els.input.focus();
+    }
+    // На мобилках (< 480px) фокус НЕ ставим -> клавиатура закрыта -> места много внизу!
 
-            if (BLOCK_SEQUENCE[currentBlockIndex] === 'B') {
-                const queueCount = window.innerWidth < 480 ? 10 : 20; 
-                scheduleDistractionsQueue(queueCount, RESPAWN_INTERVAL_MIN, RESPAWN_INTERVAL_MAX);
-            }
-        }
+    if (BLOCK_SEQUENCE[currentBlockIndex] === 'B') {
+        const queueCount = window.innerWidth < 480 ? 10 : 20; 
+        scheduleDistractionsQueue(queueCount, RESPAWN_INTERVAL_MIN, RESPAWN_INTERVAL_MAX);
+    }
+}
 
         function scheduleDistractionsQueue(count, minInterval, maxInterval) {
             distractionQueue = [];
@@ -963,6 +973,7 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
 
 
