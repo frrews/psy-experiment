@@ -576,111 +576,155 @@
         }
 
         // --- Positioning Logic ---
-        function getSafeSpawnPosition() {
-            const modalWidth = 200;
-            const modalHeight = 140;
-            const padding = 10;
-            
-            if (window.innerWidth < 480) {
-                // MOBILE
-                const problemRect = els.problem.getBoundingClientRect();
-                const inputRect = els.input.getBoundingClientRect();
-                const btnRect = els.submitBtn.getBoundingClientRect();
-                
-                const availableHeight = window.innerHeight;
-                const isKeyboardOpen = availableHeight < window.screen.height * 0.8;
-                
-                const forbiddenTop = inputRect.top - 15;   
-                const forbiddenBottom = isKeyboardOpen ? availableHeight : btnRect.bottom + 15; 
-                
-                const zones = [];
-                
-                if (forbiddenTop > modalHeight + padding) {
-                    zones.push({
-                        xMin: padding, xMax: window.innerWidth - modalWidth - padding,
-                        yMin: padding, yMax: forbiddenTop - modalHeight - padding, weight: 1
-                    });
-                }
-                
-                const bottomZoneStart = Math.max(btnRect.bottom + 5, isKeyboardOpen ? availableHeight - 10 : btnRect.bottom + 5);
-                const bottomZoneAvailable = availableHeight - bottomZoneStart;
-                
-                if (bottomZoneAvailable > modalHeight + padding) {
-                    zones.push({
-                        xMin: padding, xMax: window.innerWidth - modalWidth - padding,
-                        yMin: bottomZoneStart + padding, yMax: availableHeight - modalHeight - padding, weight: 2
-                    });
-                }
-                
-                const leftSpace = Math.min(problemRect.left, inputRect.left);
-                if (leftSpace > modalWidth + 5) {
-                    zones.push({
-                        xMin: padding, xMax: leftSpace - modalWidth - 5,
-                        yMin: padding, yMax: availableHeight - modalHeight - padding, weight: 1
-                    });
-                }
-                
-                const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
-                if (rightSpace > modalWidth + 5) {
-                    zones.push({
-                        xMin: window.innerWidth - rightSpace + 5, xMax: window.innerWidth - modalWidth - padding,
-                        yMin: padding, yMax: availableHeight - modalHeight - padding, weight: 1
-                    });
-                }
-                
-                if (zones.length === 0) {
-                    return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
-                }
-                
-                const weightedZones = [];
-                zones.forEach(zone => { for (let i = 0; i < zone.weight; i++) weightedZones.push(zone); });
-                const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
-                return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
-            } else {
-                // DESKTOP
-                const problemRect = els.problem.getBoundingClientRect();
-                const inputRect = els.input.getBoundingClientRect();
-                const btnRect = els.submitBtn.getBoundingClientRect();
-                
-                const forbidden = {
-                    top: Math.min(problemRect.top, inputRect.top) - 20,
-                    bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
-                    left: Math.min(problemRect.left, inputRect.left) - 20,
-                    right: Math.max(problemRect.right, inputRect.right) + 20
-                };
-                
-                const zones = [];
-                
-                if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
-                    zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: padding, yMax: forbidden.top - modalHeight - padding });
-                }
-                if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
-                    zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: padding, yMax: forbidden.top - modalHeight - padding });
-                }
-                if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
-                    zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
-                }
-                if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
-                    zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
-                }
-                
-                if (window.innerWidth > 600) {
-                     if (problemRect.top > modalHeight + 10) {
-                         zones.push({ xMin: problemRect.left, xMax: problemRect.right - modalWidth, yMin: 10, yMax: problemRect.top - modalHeight - 10, weight: 1.5 });
-                     }
-                     if (window.innerHeight - btnRect.bottom > modalHeight + 10) {
-                         zones.push({ xMin: btnRect.left, xMax: btnRect.right - modalWidth, yMin: btnRect.bottom + 10, yMax: window.innerHeight - modalHeight - 10, weight: 1.5 });
-                     }
-                }
-
-                if (zones.length === 0) {
-                    return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
-                }
-                
-                const zone = zones[getRandomInt(0, zones.length - 1)];
-                return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
-            }
+ // 🔥 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОЗИЦИОНИРОВАНИЯ
+function getSafeSpawnPosition() {
+    const modalWidth = 200;
+    const modalHeight = 140;
+    const padding = 10;
+    
+    // 🔥 НА МОБИЛКАХ (< 480px)
+    if (window.innerWidth < 480) {
+        const problemRect = els.problem.getBoundingClientRect();
+        const inputRect = els.input.getBoundingClientRect();
+        const btnRect = els.submitBtn.getBoundingClientRect();
+        
+        const availableHeight = window.innerHeight;
+        // Определяем, открыта ли клавиатура
+        const isKeyboardOpen = availableHeight < window.screen.height * 0.85;
+        
+        // 🔥 ГРАНИЦЫ ЗАПРЕТНОЙ ЗОНЫ
+        // Верхняя граница: чуть выше поля ввода (чтобы окна могли быть над ним, но не на нем)
+        const forbiddenTop = inputRect.top - 10;   
+        
+        // Нижняя граница: 
+        // Если клавиатура открыта — это верх клавиатуры.
+        // Если закрыта — это самый низ экрана (разрешаем окнам быть даже под кнопкой, если там есть 50px)
+        const forbiddenBottom = isKeyboardOpen ? availableHeight : availableHeight - 50; 
+        
+        const zones = [];
+        
+        // ---------------------------------------------------------
+        // 1. ВЕРХНЯЯ ЗОНА (от верха экрана до поля ввода)
+        // ---------------------------------------------------------
+        if (forbiddenTop > modalHeight + padding) {
+            zones.push({
+                xMin: padding,
+                xMax: window.innerWidth - modalWidth - padding,
+                yMin: padding,
+                yMax: forbiddenTop - modalHeight - padding,
+                weight: 1
+            });
         }
+        
+        // ---------------------------------------------------------
+        // 2. НИЖНЯЯ ЗОНА (ОТ КНОПКИ ДО НИЗА ЭКРАНА) 🔥 ИСПРАВЛЕНО
+        // ---------------------------------------------------------
+        // Начинаем зону сразу после кнопки (btnRect.bottom)
+        // Доступное место = весь экран минус начало зоны
+        const bottomZoneStart = btnRect.bottom + 10; // 10px отступ от кнопки
+        const bottomZoneAvailable = availableHeight - bottomZoneStart;
+        
+        // 🔥 УСЛОВИЕ МЯГЧЕ: достаточно всего 120px высоты (чуть меньше высоты окна), 
+        // чтобы окно появилось, обрезавшись краем экрана (это нормально)
+        if (bottomZoneAvailable > 100) { 
+            zones.push({
+                xMin: padding,
+                xMax: window.innerWidth - modalWidth - padding,
+                yMin: bottomZoneStart + padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 3 // 🔥 ВЕС 3: нижняя зона выбирается в 3 раза чаще верхней!
+            });
+        }
+        
+        // ---------------------------------------------------------
+        // 3. БОКОВЫЕ ЗОНЫ (если экран широкий enough)
+        // ---------------------------------------------------------
+        const leftSpace = Math.min(problemRect.left, inputRect.left);
+        if (leftSpace > modalWidth + 5) {
+            zones.push({
+                xMin: padding,
+                xMax: leftSpace - modalWidth - 5,
+                yMin: padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 1
+            });
+        }
+        
+        const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
+        if (rightSpace > modalWidth + 5) {
+            zones.push({
+                xMin: window.innerWidth - rightSpace + 5,
+                xMax: window.innerWidth - modalWidth - padding,
+                yMin: padding,
+                yMax: availableHeight - modalHeight - padding,
+                weight: 1
+            });
+        }
+        
+        // Фоллбэк: если зон нет (совсем тесно), кидаем в верхний угол
+        if (zones.length === 0) {
+            return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
+        }
+        
+        // 🔥 ВЫБОР С УЧЕТОМ ВЕСА
+        const weightedZones = [];
+        zones.forEach(zone => {
+            for (let i = 0; i < zone.weight; i++) {
+                weightedZones.push(zone);
+            }
+        });
+        
+        const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
+        const randomX = getRandomInt(zone.xMin, zone.xMax);
+        const randomY = getRandomInt(zone.yMin, zone.yMax);
+        
+        return { x: randomX, y: randomY };
+    }
+    
+    // ... (код для десктопа можно оставить без изменений) ...
+    // (Для краткости здесь не дублирую, вставь свой старый код для десктопа ниже)
+    // ЕСЛИ НУЖНО, ВОТ И ОН:
+    const problemRect = els.problem.getBoundingClientRect();
+    const inputRect = els.input.getBoundingClientRect();
+    const btnRect = els.submitBtn.getBoundingClientRect();
+    
+    const forbidden = {
+        top: Math.min(problemRect.top, inputRect.top) - 20,
+        bottom: Math.max(inputRect.bottom, btnRect.top) + 20,
+        left: Math.min(problemRect.left, inputRect.left) - 20,
+        right: Math.max(problemRect.right, inputRect.right) + 20
+    };
+    
+    const zones = [];
+    if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
+        zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: padding, yMax: forbidden.top - modalHeight - padding });
+    }
+    if (window.innerWidth - forbidden.right > modalWidth + padding && forbidden.top > modalHeight + padding) {
+        zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: padding, yMax: forbidden.top - modalHeight - padding });
+    }
+    if (forbidden.left > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+        zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
+    }
+    if (window.innerWidth - forbidden.right > modalWidth + padding && window.innerHeight - forbidden.bottom > modalHeight + padding) {
+        zones.push({ xMin: Math.max(forbidden.right + padding, window.innerWidth / 2), xMax: window.innerWidth - modalWidth - padding, yMin: forbidden.bottom + padding, yMax: window.innerHeight - modalHeight - padding });
+    }
+    
+    if (window.innerWidth > 600) {
+         if (problemRect.top > modalHeight + 10) {
+             zones.push({ xMin: problemRect.left, xMax: problemRect.right - modalWidth, yMin: 10, yMax: problemRect.top - modalHeight - 10, weight: 1.5 });
+         }
+         if (window.innerHeight - btnRect.bottom > modalHeight + 10) {
+             zones.push({ xMin: btnRect.left, xMax: btnRect.right - modalWidth, yMin: btnRect.bottom + 10, yMax: window.innerHeight - modalHeight - 10, weight: 1.5 });
+         }
+    }
+
+    if (zones.length === 0) {
+        return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
+    }
+    
+    const zone = zones[getRandomInt(0, zones.length - 1)];
+    return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
+}
 
         function spawnWindow(message = null) {
             const maxWindows = getMaxWindows();
@@ -908,3 +952,4 @@
     </script>
 </body>
 </html>
+
