@@ -576,114 +576,95 @@
         }
 
         // --- Positioning Logic ---
- // 🔥 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОЗИЦИОНИРОВАНИЯ
 function getSafeSpawnPosition() {
     const modalWidth = 200;
     const modalHeight = 140;
     const padding = 10;
     
-    // 🔥 НА МОБИЛКАХ (< 480px)
+    // 🔥 НА МОБИЛКАХ (< 480px) — МАКСИМАЛЬНО ПРОСТО
     if (window.innerWidth < 480) {
         const problemRect = els.problem.getBoundingClientRect();
         const inputRect = els.input.getBoundingClientRect();
         const btnRect = els.submitBtn.getBoundingClientRect();
-        
         const availableHeight = window.innerHeight;
-        // Определяем, открыта ли клавиатура
-        const isKeyboardOpen = availableHeight < window.screen.height * 0.85;
-        
-        // 🔥 ГРАНИЦЫ ЗАПРЕТНОЙ ЗОНЫ
-        // Верхняя граница: чуть выше поля ввода (чтобы окна могли быть над ним, но не на нем)
-        const forbiddenTop = inputRect.top - 10;   
-        
-        // Нижняя граница: 
-        // Если клавиатура открыта — это верх клавиатуры.
-        // Если закрыта — это самый низ экрана (разрешаем окнам быть даже под кнопкой, если там есть 50px)
-        const forbiddenBottom = isKeyboardOpen ? availableHeight : availableHeight - 50; 
         
         const zones = [];
         
-        // ---------------------------------------------------------
-        // 1. ВЕРХНЯЯ ЗОНА (от верха экрана до поля ввода)
-        // ---------------------------------------------------------
-        if (forbiddenTop > modalHeight + padding) {
+        // 1. ВЕРХНЯЯ ЗОНА (от верха экрана до верха поля ввода)
+        // Появляется, если есть хотя бы 100px высоты
+        const topZoneHeight = inputRect.top - 10; 
+        if (topZoneHeight > 100) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
                 yMin: padding,
-                yMax: forbiddenTop - modalHeight - padding,
+                yMax: topZoneHeight - modalHeight,
                 weight: 1
             });
         }
         
-        // ---------------------------------------------------------
-        // 2. НИЖНЯЯ ЗОНА (ОТ КНОПКИ ДО НИЗА ЭКРАНА) 🔥 ИСПРАВЛЕНО
-        // ---------------------------------------------------------
-        // Начинаем зону сразу после кнопки (btnRect.bottom)
-        // Доступное место = весь экран минус начало зоны
-        const bottomZoneStart = btnRect.bottom + 10; // 10px отступ от кнопки
-        const bottomZoneAvailable = availableHeight - bottomZoneStart;
+        // 2. НИЖНЯЯ ЗОНА (ОТ НИЗА КНОПКИ ДО САМОГО НИЗА ЭКРАНА) 🔥 БЕЗ УСЛОВИЙ
+        // Просто берем всё место от кнопки до низа.
+        // Если места мало — окно просто обрежется краем экрана, но появится!
+        const bottomStart = btnRect.bottom + 10;
+        const bottomSpace = availableHeight - bottomStart;
         
-        // 🔥 УСЛОВИЕ МЯГЧЕ: достаточно всего 120px высоты (чуть меньше высоты окна), 
-        // чтобы окно появилось, обрезавшись краем экрана (это нормально)
-        if (bottomZoneAvailable > 100) { 
+        // Разрешаем зону, даже если места всего 50px (окно будет частично видно)
+        if (bottomSpace > 50) {
             zones.push({
                 xMin: padding,
                 xMax: window.innerWidth - modalWidth - padding,
-                yMin: bottomZoneStart + padding,
-                yMax: availableHeight - modalHeight - padding,
-                weight: 3 // 🔥 ВЕС 3: нижняя зона выбирается в 3 раза чаще верхней!
+                yMin: bottomStart, // Начинаем сразу от кнопки
+                yMax: availableHeight - modalHeight, // Тянем до низа
+                weight: 3 // 🔥 ПРИОРИТЕТ: нижняя зона в 3 раза чаще
             });
         }
         
-        // ---------------------------------------------------------
-        // 3. БОКОВЫЕ ЗОНЫ (если экран широкий enough)
-        // ---------------------------------------------------------
+        // 3. БОКОВЫЕ ЗОНЫ (если есть место слева или справа от контента)
         const leftSpace = Math.min(problemRect.left, inputRect.left);
-        if (leftSpace > modalWidth + 5) {
+        if (leftSpace > 60) { // Достаточно 60px ширины
             zones.push({
                 xMin: padding,
-                xMax: leftSpace - modalWidth - 5,
+                xMax: leftSpace - modalWidth,
                 yMin: padding,
-                yMax: availableHeight - modalHeight - padding,
+                yMax: availableHeight - modalHeight,
                 weight: 1
             });
         }
         
         const rightSpace = window.innerWidth - Math.max(problemRect.right, inputRect.right);
-        if (rightSpace > modalWidth + 5) {
+        if (rightSpace > 60) {
             zones.push({
-                xMin: window.innerWidth - rightSpace + 5,
-                xMax: window.innerWidth - modalWidth - padding,
+                xMin: window.innerWidth - rightSpace,
+                xMax: window.innerWidth - modalWidth,
                 yMin: padding,
-                yMax: availableHeight - modalHeight - padding,
+                yMax: availableHeight - modalHeight,
                 weight: 1
             });
         }
         
-        // Фоллбэк: если зон нет (совсем тесно), кидаем в верхний угол
+        // Фоллбэк: если вообще нет места (невозможно), кидаем в любой угол
         if (zones.length === 0) {
-            return { x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, y: padding };
+            return { 
+                x: Math.random() > 0.5 ? padding : window.innerWidth - modalWidth - padding, 
+                y: Math.random() > 0.5 ? padding : availableHeight - modalHeight - padding 
+            };
         }
         
-        // 🔥 ВЫБОР С УЧЕТОМ ВЕСА
+        // Выбор зоны с учетом веса
         const weightedZones = [];
         zones.forEach(zone => {
-            for (let i = 0; i < zone.weight; i++) {
-                weightedZones.push(zone);
-            }
+            for (let i = 0; i < zone.weight; i++) weightedZones.push(zone);
         });
         
         const zone = weightedZones[getRandomInt(0, weightedZones.length - 1)];
-        const randomX = getRandomInt(zone.xMin, zone.xMax);
-        const randomY = getRandomInt(zone.yMin, zone.yMax);
-        
-        return { x: randomX, y: randomY };
+        return { 
+            x: getRandomInt(zone.xMin, zone.xMax), 
+            y: getRandomInt(zone.yMin, zone.yMax) 
+        };
     }
     
-    // ... (код для десктопа можно оставить без изменений) ...
-    // (Для краткости здесь не дублирую, вставь свой старый код для десктопа ниже)
-    // ЕСЛИ НУЖНО, ВОТ И ОН:
+    // 🔥 НА ДЕСКТОПЕ (>= 480px) — ОСТАВЛЯЕМ СТАРУЮ ЛОГИКУ
     const problemRect = els.problem.getBoundingClientRect();
     const inputRect = els.input.getBoundingClientRect();
     const btnRect = els.submitBtn.getBoundingClientRect();
@@ -696,6 +677,7 @@ function getSafeSpawnPosition() {
     };
     
     const zones = [];
+    
     if (forbidden.left > modalWidth + padding && forbidden.top > modalHeight + padding) {
         zones.push({ xMin: padding, xMax: Math.min(forbidden.left - modalWidth - padding, window.innerWidth / 2), yMin: padding, yMax: forbidden.top - modalHeight - padding });
     }
@@ -725,7 +707,6 @@ function getSafeSpawnPosition() {
     const zone = zones[getRandomInt(0, zones.length - 1)];
     return { x: getRandomInt(zone.xMin, zone.xMax), y: getRandomInt(zone.yMin, zone.yMax) };
 }
-
         function spawnWindow(message = null) {
             const maxWindows = getMaxWindows();
             if (windowsOnScreen >= maxWindows) return false;
@@ -952,4 +933,5 @@ function getSafeSpawnPosition() {
     </script>
 </body>
 </html>
+
 
